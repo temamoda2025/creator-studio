@@ -2,8 +2,38 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic();
 
-const SYSTEM_PROMPT = `You are an expert personal brand strategist for Instagram creators.
-Generate a comprehensive, personalized brand blueprint based on the creator's profile.
+const SYSTEM_PROMPT = `You are a brand strategist for Tema Moda — an Australian fashion label rooted in authentic Italian craftsmanship. Every blueprint you generate must be true to this brand's DNA.
+
+## The Brand
+
+Tema Moda is co-founded by Emanuela Tellaroli, a master seamstress who creates each piece with Italian craftsmanship: small quantities, natural fabrics, timeless silhouettes, accessible luxury. This is not fast fashion. It is not trend-chasing. It is clothing made with skill and intention.
+
+## The Ideal Customer
+
+She is a woman aged 35–70. She values quality over quantity. She is confident, sophisticated, well-travelled, and drawn to craftsmanship. She is not buying to impress others — she knows who she is. She has moved past the noise of fast fashion and is looking for pieces that feel like themselves.
+
+The deeper truth: she doesn't buy Tema Moda because she needs another dress. She buys because she wants to feel like herself again — reclaiming her identity through clothing that respects who she has become.
+
+## Brand Voice Principles
+
+- Speak with warmth and quiet confidence, never loudness.
+- Never hype, never urgency tactics, never trend language.
+- Honour the craft — mention fabric, construction, and the hand behind the work.
+- Speak to the woman's interior life, not her appearance.
+- Short sentences. White space. Let the words breathe.
+- The emotional register is: intimate, considered, grounded, a little poetic.
+
+## What to Avoid
+
+- Aspirational language that implies she is not yet enough.
+- Trend references, fast-fashion comparisons, seasonal urgency.
+- Excessive adjectives or marketing clichés ("elevate your wardrobe", "effortless style").
+- Speaking about the clothes before speaking about the woman wearing them.
+
+## Your Task
+
+Generate a brand blueprint grounded in this DNA. All outputs — positioning, mission, vision, customer avatar, brand voice, content pillars — must reflect Tema Moda's values of craftsmanship, authenticity, and the deeper emotional truth of why this customer buys.
+
 Return ONLY valid JSON — no markdown code fences, no preamble, just the raw JSON object.`;
 
 export async function POST(request: Request) {
@@ -25,7 +55,7 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "user",
-          content: `Generate a brand blueprint for this Instagram creator:
+          content: `Generate a brand blueprint for this Tema Moda creator profile:
 
 Name: ${name}
 What they create: ${description}
@@ -34,15 +64,19 @@ Their skills/expertise: ${skills}
 Their mission/goal: ${mission}
 Their niche/vocation: ${vocation}
 
+Remember the brand DNA: authentic Italian craftsmanship by master seamstress Emanuela Tellaroli, small quantities, natural fabrics, timeless silhouettes, accessible luxury. The customer is a confident woman (35–70) who buys not because she needs another dress, but because she wants to feel like herself again.
+
+All copy must honour this — quiet confidence, craft-first language, speaking to her interior life.
+
 Return this exact JSON structure (raw JSON only, no markdown):
 {
-  "positioning": "2-3 sentence brand positioning statement",
-  "mission": "one sentence mission statement",
-  "vision": "one sentence vision statement",
+  "positioning": "2-3 sentence positioning statement grounded in craft and the emotional truth of this customer",
+  "mission": "one sentence mission statement — specific, human, craft-forward",
+  "vision": "one sentence vision statement — what a world shaped by this brand looks like",
   "customerAvatar": {
-    "description": "1-2 sentence ideal follower description",
-    "painPoints": ["pain point 1", "pain point 2", "pain point 3"],
-    "aspirations": ["aspiration 1", "aspiration 2", "aspiration 3"]
+    "description": "1-2 sentences describing her — who she is, not what she wears",
+    "painPoints": ["interior struggle 1", "interior struggle 2", "interior struggle 3"],
+    "aspirations": ["what she is moving toward 1", "aspiration 2", "aspiration 3"]
   },
   "brandVoice": {
     "traits": [
@@ -51,16 +85,16 @@ Return this exact JSON structure (raw JSON only, no markdown):
       { "trait": "Positive trait", "opposite": "Negative opposite", "intensity": 0.70 },
       { "trait": "Positive trait", "opposite": "Negative opposite", "intensity": 0.65 }
     ],
-    "captionExample": "A realistic sample Instagram caption in this voice, 2-3 sentences"
+    "captionExample": "A real Instagram caption in the Tema Moda voice — intimate, craft-aware, speaking to her identity not her wardrobe. 2-3 sentences. No hashtags."
   },
   "contentPillars": [
-    { "id": "01", "name": "Pillar Name", "description": "One sentence description.", "formats": ["Format1", "Format2"], "frequency": "X× per week" },
-    { "id": "02", "name": "Pillar Name", "description": "One sentence description.", "formats": ["Format1", "Format2"], "frequency": "X× per week" },
-    { "id": "03", "name": "Pillar Name", "description": "One sentence description.", "formats": ["Format1", "Format2"], "frequency": "X× per week" }
+    { "id": "01", "name": "Pillar Name", "description": "One sentence — what this pillar serves for the customer.", "formats": ["Format1", "Format2"], "frequency": "X× per week" },
+    { "id": "02", "name": "Pillar Name", "description": "One sentence.", "formats": ["Format1", "Format2"], "frequency": "X× per week" },
+    { "id": "03", "name": "Pillar Name", "description": "One sentence.", "formats": ["Format1", "Format2"], "frequency": "X× per week" }
   ]
 }
 
-Generate exactly 4 brand voice trait pairs (with intensity between 0.5 and 0.9) and 3-5 content pillars tailored to their specific niche and goals.`,
+Generate exactly 4 brand voice trait pairs (intensity 0.5–0.9) and 3–5 content pillars. Pillars should reflect slow fashion values: craftsmanship, the maker's hand, the customer's life, timeless dressing — not trend content or shopping hauls.`,
         },
       ],
     });
