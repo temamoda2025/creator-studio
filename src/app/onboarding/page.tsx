@@ -35,6 +35,9 @@ export default function OnboardingPage() {
     pillars: [],
     goal: "",
   });
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+  const [blueprintReady, setBlueprintReady] = useState(false);
 
   const update = (key: keyof FormData, value: string | string[]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -56,6 +59,58 @@ export default function OnboardingPage() {
     form.pillars.length > 0 && form.frequency && form.goal,
     true,
   ][step];
+
+  const generateBlueprint = async (formData: FormData) => {
+    setGenerating(true);
+    setGenError(null);
+    setBlueprintReady(false);
+    try {
+      const res = await fetch("/api/brand/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          description: `${formData.niche} content creator with a ${formData.aesthetic} aesthetic`,
+          passion: formData.pillars.join(", "),
+          skills: formData.niche,
+          mission: formData.goal,
+          vocation: `${formData.niche} Instagram creator`,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Generation failed");
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      // Persist for the brand page
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          "creator_brand_blueprint",
+          JSON.stringify({
+            ...data,
+            creatorName: formData.name,
+            handle: formData.handle,
+            niche: formData.niche,
+            aesthetic: formData.aesthetic,
+          })
+        );
+      }
+      setBlueprintReady(true);
+    } catch {
+      setGenError("Couldn't generate blueprint. Please try again.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleContinue = () => {
+    const next = step + 1;
+    setStep(next);
+    if (next === 3) {
+      generateBlueprint(form);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -231,34 +286,79 @@ export default function OnboardingPage() {
           {/* Step 3 — Launch */}
           {step === 3 && (
             <div className="text-center">
-              <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-8">
-                <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-8 transition-colors ${
+                generating ? "bg-black/10" : "bg-black"
+              }`}>
+                {generating ? (
+                  <svg className="w-6 h-6 animate-spin text-black/40" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
               </div>
-              <h1 className="text-3xl font-semibold tracking-tight mb-3">
-                Your studio is ready, {form.name.split(" ")[0] || "Creator"}.
-              </h1>
-              <p className="text-sm text-black/50 mb-2">
-                <span className="text-black font-medium">@{form.handle || "yourhandle"}</span> · {form.niche} · {form.aesthetic}
-              </p>
-              <p className="text-sm text-black/40 mb-10">
-                {form.pillars.length} content pillars · {form.frequency || "TBD"} · Goal: {form.goal || "TBD"}
-              </p>
-              <div className="flex flex-col gap-3 max-w-xs mx-auto">
-                <Link
-                  href="/brand"
-                  className="bg-black text-white text-sm font-medium px-6 py-3 rounded-full text-center hover:bg-black/80 transition-colors"
-                >
-                  View your Brand Blueprint
-                </Link>
-                <Link
-                  href="/dashboard"
-                  className="border border-black text-black text-sm font-medium px-6 py-3 rounded-full text-center hover:bg-black/5 transition-colors"
-                >
-                  Go to Dashboard
-                </Link>
-              </div>
+
+              {generating ? (
+                <>
+                  <h1 className="text-3xl font-semibold tracking-tight mb-3">
+                    Building your blueprint.
+                  </h1>
+                  <p className="text-sm text-black/50 mb-2">
+                    Crafting your brand strategy with AI — this takes about 15 seconds.
+                  </p>
+                  <div className="mt-8 flex items-center justify-center gap-1.5">
+                    {[0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="w-1.5 h-1.5 bg-black/20 rounded-full animate-pulse"
+                        style={{ animationDelay: `${i * 200}ms` }}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : genError ? (
+                <>
+                  <h1 className="text-3xl font-semibold tracking-tight mb-3">
+                    Something went wrong.
+                  </h1>
+                  <p className="text-sm text-black/50 mb-8">{genError}</p>
+                  <button
+                    onClick={() => generateBlueprint(form)}
+                    className="bg-black text-white text-sm font-medium px-8 py-3 rounded-full hover:bg-black/80 transition-colors"
+                  >
+                    Try again
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-3xl font-semibold tracking-tight mb-3">
+                    Your blueprint is ready, {form.name.split(" ")[0] || "Creator"}.
+                  </h1>
+                  <p className="text-sm text-black/50 mb-2">
+                    <span className="text-black font-medium">@{form.handle || "yourhandle"}</span> · {form.niche} · {form.aesthetic}
+                  </p>
+                  <p className="text-sm text-black/40 mb-10">
+                    {form.pillars.length} content pillars · {form.frequency || "TBD"} · Goal: {form.goal || "TBD"}
+                  </p>
+                  <div className="flex flex-col gap-3 max-w-xs mx-auto">
+                    <Link
+                      href="/brand"
+                      className="bg-black text-white text-sm font-medium px-6 py-3 rounded-full text-center hover:bg-black/80 transition-colors"
+                    >
+                      View your Brand Blueprint →
+                    </Link>
+                    <Link
+                      href="/dashboard"
+                      className="border border-black text-black text-sm font-medium px-6 py-3 rounded-full text-center hover:bg-black/5 transition-colors"
+                    >
+                      Go to Dashboard
+                    </Link>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -273,10 +373,10 @@ export default function OnboardingPage() {
               </button>
               <button
                 disabled={!canProceed}
-                onClick={() => setStep((s) => s + 1)}
+                onClick={handleContinue}
                 className="bg-black text-white text-sm font-medium px-8 py-3 rounded-full hover:bg-black/80 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                Continue →
+                {step === 2 ? "Generate Blueprint →" : "Continue →"}
               </button>
             </div>
           )}

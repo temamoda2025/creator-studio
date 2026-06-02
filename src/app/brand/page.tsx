@@ -1,6 +1,35 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Nav from "@/components/Nav";
 
-const pillars = [
+interface BlueprintData {
+  creatorName: string;
+  handle: string;
+  niche: string;
+  aesthetic: string;
+  positioning: string;
+  mission: string;
+  vision: string;
+  customerAvatar: {
+    description: string;
+    painPoints: string[];
+    aspirations: string[];
+  };
+  brandVoice: {
+    traits: Array<{ trait: string; opposite: string; intensity: number }>;
+    captionExample: string;
+  };
+  contentPillars: Array<{
+    id: string;
+    name: string;
+    description: string;
+    formats: string[];
+    frequency: string;
+  }>;
+}
+
+const defaultPillars = [
   {
     id: "01",
     name: "Style Inspiration",
@@ -31,11 +60,11 @@ const pillars = [
   },
 ];
 
-const toneTraits = [
-  { trait: "Confident", opposite: "Uncertain" },
-  { trait: "Warm", opposite: "Distant" },
-  { trait: "Aspirational", opposite: "Boastful" },
-  { trait: "Informative", opposite: "Preachy" },
+const defaultToneTraits = [
+  { trait: "Confident", opposite: "Uncertain", intensity: 0.75 },
+  { trait: "Warm", opposite: "Distant", intensity: 0.70 },
+  { trait: "Aspirational", opposite: "Boastful", intensity: 0.65 },
+  { trait: "Informative", opposite: "Preachy", intensity: 0.80 },
 ];
 
 const palette = [
@@ -54,6 +83,33 @@ const typographyTokens = [
 ];
 
 export default function BrandPage() {
+  const [blueprint, setBlueprint] = useState<BlueprintData | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("creator_brand_blueprint");
+    if (stored) {
+      try {
+        setBlueprint(JSON.parse(stored));
+      } catch {
+        // Ignore malformed data
+      }
+    }
+  }, []);
+
+  const pillars = blueprint?.contentPillars ?? defaultPillars;
+  const toneTraits = blueprint?.brandVoice?.traits ?? defaultToneTraits;
+  const captionExample = blueprint?.brandVoice?.captionExample ??
+    "This silk slip has been in heavy rotation since March — and honestly, I've stopped apologising for rewearing. Your wardrobe should work for you. Here's exactly how I'm styling it three different ways this week.";
+
+  const headerTags = blueprint
+    ? [blueprint.niche, blueprint.aesthetic, "info@temamoda.com.au"]
+    : ["Luxury Fashion", "Minimal & Clean", "Sydney, AU", "info@temamoda.com.au"];
+
+  const totalPostsPerWeek = pillars.reduce((sum, p) => {
+    const match = p.frequency.match(/(\d+)/);
+    return sum + (match ? parseInt(match[1]) : 0);
+  }, 0);
+
   return (
     <>
       <Nav />
@@ -66,23 +122,23 @@ export default function BrandPage() {
               Brand Blueprint
             </p>
             <h1 className="text-5xl font-semibold tracking-tight mb-4">
-              Tema Moda Creator Studio
+              {blueprint?.creatorName
+                ? `${blueprint.creatorName} · Creator Studio`
+                : "Tema Moda Creator Studio"}
             </h1>
             <p className="text-white/50 text-lg max-w-xl">
-              Your strategic brand identity document. Use this as your north star
-              for every caption, visual, and collaboration.
+              {blueprint?.positioning ??
+                "Your strategic brand identity document. Use this as your north star for every caption, visual, and collaboration."}
             </p>
             <div className="mt-10 flex flex-wrap gap-3">
-              {["Luxury Fashion", "Minimal & Clean", "Sydney, AU", "info@temamoda.com.au"].map(
-                (tag) => (
-                  <span
-                    key={tag}
-                    className="text-xs border border-white/20 text-white/60 px-3 py-1.5 rounded-full"
-                  >
-                    {tag}
-                  </span>
-                )
-              )}
+              {headerTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-xs border border-white/20 text-white/60 px-3 py-1.5 rounded-full"
+                >
+                  {tag}
+                </span>
+              ))}
             </div>
           </div>
         </section>
@@ -93,26 +149,67 @@ export default function BrandPage() {
             <div>
               <p className="text-xs tracking-[0.25em] uppercase text-black/30 mb-2">Mission</p>
               <p className="text-sm text-black/70 leading-relaxed">
-                Empower fashion-conscious women to dress with intention, not impulse —
-                building a wardrobe that is both beautiful and sustainable.
+                {blueprint?.mission ??
+                  "Empower fashion-conscious women to dress with intention, not impulse — building a wardrobe that is both beautiful and sustainable."}
               </p>
             </div>
             <div>
               <p className="text-xs tracking-[0.25em] uppercase text-black/30 mb-2">Vision</p>
               <p className="text-sm text-black/70 leading-relaxed">
-                To be the most trusted fashion voice for Australian women who want effortless
-                style without compromise.
+                {blueprint?.vision ??
+                  "To be the most trusted fashion voice for Australian women who want effortless style without compromise."}
               </p>
             </div>
             <div>
               <p className="text-xs tracking-[0.25em] uppercase text-black/30 mb-2">Positioning</p>
               <p className="text-sm text-black/70 leading-relaxed">
-                Elevated everyday style for the modern Australian woman — where luxury
-                meets accessibility.
+                {blueprint?.positioning ??
+                  "Elevated everyday style for the modern Australian woman — where luxury meets accessibility."}
               </p>
             </div>
           </div>
         </section>
+
+        {/* Ideal Customer — only shown when blueprint is available */}
+        {blueprint?.customerAvatar && (
+          <section className="px-6 py-20 bg-black/[0.02] border-b border-black/10">
+            <div className="max-w-6xl mx-auto">
+              <p className="text-xs tracking-[0.25em] uppercase text-black/30 mb-2">
+                Ideal customer
+              </p>
+              <h2 className="text-3xl font-semibold tracking-tight mb-8">Who you&apos;re speaking to.</h2>
+              <div className="grid sm:grid-cols-3 gap-8">
+                <div className="sm:col-span-1">
+                  <p className="text-sm text-black/70 leading-relaxed">
+                    {blueprint.customerAvatar.description}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-black/40 uppercase tracking-wider mb-3">Pain Points</p>
+                  <ul className="space-y-2">
+                    {blueprint.customerAvatar.painPoints.map((point, i) => (
+                      <li key={i} className="text-sm text-black/60 flex gap-2">
+                        <span className="text-black/20 mt-0.5">·</span>
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-black/40 uppercase tracking-wider mb-3">Aspirations</p>
+                  <ul className="space-y-2">
+                    {blueprint.customerAvatar.aspirations.map((aspiration, i) => (
+                      <li key={i} className="text-sm text-black/60 flex gap-2">
+                        <span className="text-black/20 mt-0.5">·</span>
+                        {aspiration}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Content Pillars */}
         <section className="px-6 py-20 bg-white">
@@ -124,7 +221,7 @@ export default function BrandPage() {
                 </p>
                 <h2 className="text-3xl font-semibold tracking-tight">What you post.</h2>
               </div>
-              <p className="text-sm text-black/40">7 posts per week</p>
+              <p className="text-sm text-black/40">{totalPostsPerWeek} posts per week</p>
             </div>
             <div className="grid sm:grid-cols-2 gap-6">
               {pillars.map(({ id, name, description, formats, frequency }) => (
@@ -162,7 +259,7 @@ export default function BrandPage() {
               Stay in this range — always.
             </p>
             <div className="space-y-0 border border-white/10">
-              {toneTraits.map(({ trait, opposite }, i) => (
+              {toneTraits.map(({ trait, opposite, intensity }, i) => (
                 <div
                   key={trait}
                   className={`flex items-center justify-between px-8 py-5 ${
@@ -172,7 +269,10 @@ export default function BrandPage() {
                   <span className="text-sm font-medium text-white">{trait}</span>
                   <div className="flex items-center gap-3">
                     <div className="w-32 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full w-3/4 bg-white rounded-full" />
+                      <div
+                        className="h-full bg-white rounded-full"
+                        style={{ width: `${intensity * 100}%` }}
+                      />
                     </div>
                     <span className="text-sm text-white/30 w-20 text-right">not {opposite}</span>
                   </div>
@@ -182,9 +282,7 @@ export default function BrandPage() {
             <div className="mt-10 p-8 border border-white/10">
               <p className="text-xs tracking-[0.25em] uppercase text-white/30 mb-4">Caption example</p>
               <p className="text-sm text-white/70 leading-relaxed italic">
-                &ldquo;This silk slip has been in heavy rotation since March — and honestly, I&apos;ve stopped
-                apologising for rewearing. Your wardrobe should work for you. Here&apos;s exactly how
-                I&apos;m styling it three different ways this week.&rdquo;
+                &ldquo;{captionExample}&rdquo;
               </p>
             </div>
           </div>
