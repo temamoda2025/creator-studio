@@ -15,7 +15,6 @@ interface IgPost {
   permalink: string;
   likeCount: number;
   commentsCount: number;
-  impressions: number;
   reach: number;
   saved: number;
 }

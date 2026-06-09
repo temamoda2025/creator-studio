@@ -25,11 +25,11 @@ interface IgInsight {
 async function fetchInsights(
   mediaId: string,
   token: string
-): Promise<{ impressions: number; reach: number; saved: number }> {
+): Promise<{ reach: number; saved: number }> {
   try {
-    const url = `${IG_BASE}/${mediaId}/insights?metric=impressions,reach,saved&access_token=${token}`;
+    const url = `${IG_BASE}/${mediaId}/insights?metric=reach,saved&access_token=${token}`;
     const res = await fetch(url, { next: { revalidate: 60 } });
-    if (!res.ok) return { impressions: 0, reach: 0, saved: 0 };
+    if (!res.ok) return { reach: 0, saved: 0 };
 
     const json = await res.json();
     const insights: IgInsight[] = json.data ?? [];
@@ -41,13 +41,9 @@ async function fetchInsights(
       return item.values?.[0]?.value ?? 0;
     };
 
-    return {
-      impressions: get("impressions"),
-      reach: get("reach"),
-      saved: get("saved"),
-    };
+    return { reach: get("reach"), saved: get("saved") };
   } catch {
-    return { impressions: 0, reach: 0, saved: 0 };
+    return { reach: 0, saved: 0 };
   }
 }
 
@@ -98,7 +94,6 @@ export async function GET() {
           permalink: item.permalink,
           likeCount: item.like_count ?? 0,
           commentsCount: item.comments_count ?? 0,
-          impressions: insights.impressions,
           reach: insights.reach,
           saved: insights.saved,
         };
