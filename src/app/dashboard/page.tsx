@@ -1,16 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Nav from "@/components/Nav";
 import Link from "next/link";
 import ContentGenerator from "@/components/ContentGenerator";
 
-const stats = [
-  { label: "Followers", value: "14,280", delta: "+312 this week", positive: true },
-  { label: "Avg. Engagement", value: "4.7%", delta: "+0.8% vs last month", positive: true },
-  { label: "Posts This Month", value: "18", delta: "6 remaining", positive: null },
-  { label: "Story Views", value: "2,940", delta: "-180 vs last week", positive: false },
-];
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface IgPost {
+  id: string;
+  caption: string;
+  mediaType: string;
+  timestamp: string;
+  permalink: string;
+  likeCount: number;
+  commentsCount: number;
+  impressions: number;
+  reach: number;
+  saved: number;
+}
+
+interface IgStats {
+  followers: number;
+  mediaCount: number;
+  username: string;
+  posts: IgPost[];
+}
+
+// ─── Static data (calendar + content ideas stay hardcoded) ───────────────────
 
 const calendar = [
   { day: "Mon", date: "02", posts: ["Outfit Reel"], done: true },
@@ -49,32 +66,116 @@ const ideas = [
   },
 ];
 
-const recentPosts = [
-  {
-    type: "Reel",
-    caption: "The silk slip era is not over. Here's how I'm wearing mine...",
-    date: "3 Jun",
-    likes: "1.2K",
-    comments: "48",
-    saves: "319",
-  },
-  {
-    type: "Carousel",
-    caption: "3 outfits from 6 pieces — the wardrobe math that changed...",
-    date: "1 Jun",
-    likes: "876",
-    comments: "31",
-    saves: "502",
-  },
-  {
-    type: "Static",
-    caption: "Monday in Milan (sort of). Channelling that editorial energy...",
-    date: "30 May",
-    likes: "1.05K",
-    comments: "22",
-    saves: "187",
-  },
-];
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function fmt(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString();
+}
+
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function mediaTypeLabel(type: string): string {
+  if (type === "VIDEO") return "Reel";
+  if (type === "CAROUSEL_ALBUM") return "Carousel";
+  return "Static";
+}
+
+function computeStats(data: IgStats) {
+  const { followers, mediaCount, posts } = data;
+
+  const avgEngagement =
+    posts.length > 0 && followers > 0
+      ? posts.reduce((sum, p) => sum + p.likeCount + p.commentsCount, 0) /
+        posts.length /
+        followers *
+        100
+      : 0;
+
+  const avgReach =
+    posts.length > 0
+      ? Math.round(posts.reduce((sum, p) => sum + p.reach, 0) / posts.length)
+      : 0;
+
+  return [
+    {
+      label: "Followers",
+      value: fmt(followers),
+      delta: `@${data.username}`,
+      positive: null as boolean | null,
+    },
+    {
+      label: "Avg. Engagement",
+      value: `${avgEngagement.toFixed(1)}%`,
+      delta: "last 10 posts",
+      positive: null as boolean | null,
+    },
+    {
+      label: "Total Posts",
+      value: fmt(mediaCount),
+      delta: "on this account",
+      positive: null as boolean | null,
+    },
+    {
+      label: "Avg. Reach",
+      value: fmt(avgReach),
+      delta: "last 10 posts",
+      positive: null as boolean | null,
+    },
+  ];
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function StatsSkeleton() {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-pulse">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="bg-white border border-black/10 p-6">
+          <div className="h-2 bg-black/8 rounded w-20 mb-4" />
+          <div className="h-8 bg-black/8 rounded w-24 mb-2" />
+          <div className="h-2 bg-black/6 rounded w-16" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RecentPostsSkeleton() {
+  return (
+    <div className="divide-y divide-black/8 animate-pulse">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="py-4 flex items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="h-6 w-14 bg-black/8 rounded-full" />
+            <div className="h-3 bg-black/6 rounded w-64" />
+          </div>
+          <div className="flex gap-6">
+            {[...Array(4)].map((_, j) => (
+              <div key={j} className="h-2 w-10 bg-black/6 rounded" />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ErrorBanner({ message }: { message: string }) {
+  return (
+    <div className="bg-red-50 border border-red-200 px-5 py-3 text-xs text-red-600 rounded">
+      Instagram API: {message}
+    </div>
+  );
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
 
 type Tab = "overview" | "content-generator";
 
@@ -83,15 +184,33 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "content-generator", label: "Content Generator" },
 ];
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>("overview");
+  const [igData, setIgData] = useState<IgStats | null>(null);
+  const [igLoading, setIgLoading] = useState(true);
+  const [igError, setIgError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/instagram/stats")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.error) throw new Error(json.error);
+        setIgData(json as IgStats);
+      })
+      .catch((e: Error) => setIgError(e.message))
+      .finally(() => setIgLoading(false));
+  }, []);
+
+  const stats = igData ? computeStats(igData) : null;
 
   return (
     <>
       <Nav />
       <div className="pt-14 bg-zinc-50 min-h-screen">
 
-        {/* Dashboard header */}
+        {/* Header */}
         <div className="bg-white border-b border-black/10 px-6 pt-8 pb-0">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-end justify-between mb-6">
@@ -115,7 +234,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-0 border-b-0">
+            <div className="flex">
               {TABS.map(({ id, label }) => (
                 <button
                   key={id}
@@ -135,29 +254,35 @@ export default function DashboardPage() {
 
         <div className="max-w-6xl mx-auto px-6 py-10 space-y-10">
 
-          {/* Overview tab */}
+          {/* ── Overview ── */}
           {tab === "overview" && (
             <>
+              {igError && <ErrorBanner message={igError} />}
+
               {/* Stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {stats.map(({ label, value, delta, positive }) => (
-                  <div key={label} className="bg-white border border-black/10 p-6">
-                    <p className="text-xs text-black/40 uppercase tracking-wider mb-3">{label}</p>
-                    <p className="text-3xl font-semibold tracking-tight mb-1">{value}</p>
-                    <p
-                      className={`text-xs ${
-                        positive === true
-                          ? "text-emerald-600"
-                          : positive === false
-                          ? "text-red-500"
-                          : "text-black/40"
-                      }`}
-                    >
-                      {delta}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              {igLoading ? (
+                <StatsSkeleton />
+              ) : stats ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {stats.map(({ label, value, delta, positive }) => (
+                    <div key={label} className="bg-white border border-black/10 p-6">
+                      <p className="text-xs text-black/40 uppercase tracking-wider mb-3">{label}</p>
+                      <p className="text-3xl font-semibold tracking-tight mb-1">{value}</p>
+                      <p
+                        className={`text-xs ${
+                          positive === true
+                            ? "text-emerald-600"
+                            : positive === false
+                            ? "text-red-500"
+                            : "text-black/40"
+                        }`}
+                      >
+                        {delta}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
 
               <div className="grid sm:grid-cols-3 gap-6">
 
@@ -201,7 +326,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Quick stats sidebar */}
+                {/* Format performance sidebar */}
                 <div className="space-y-4">
                   <div className="bg-white border border-black/10 p-6">
                     <h2 className="text-sm font-semibold mb-4">Top performing format</h2>
@@ -276,32 +401,61 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Recent posts */}
+              {/* Recent Posts — live from Instagram */}
               <div className="bg-white border border-black/10 p-8">
-                <h2 className="text-sm font-semibold mb-6">Recent Posts</h2>
-                <div className="divide-y divide-black/8">
-                  {recentPosts.map(({ type, caption, date, likes, comments, saves }) => (
-                    <div key={date} className="py-4 flex items-center justify-between gap-6">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <span className="shrink-0 text-xs border border-black/15 px-2.5 py-1 rounded-full">
-                          {type}
-                        </span>
-                        <p className="text-sm text-black/70 truncate">{caption}</p>
-                      </div>
-                      <div className="shrink-0 flex items-center gap-6 text-xs text-black/40">
-                        <span>{date}</span>
-                        <span>♥ {likes}</span>
-                        <span>💬 {comments}</span>
-                        <span>🔖 {saves}</span>
-                      </div>
-                    </div>
-                  ))}
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-sm font-semibold">Recent Posts</h2>
+                  {igData && (
+                    <span className="text-xs text-black/30">Live from Instagram</span>
+                  )}
                 </div>
+
+                {igLoading ? (
+                  <RecentPostsSkeleton />
+                ) : igData && igData.posts.length > 0 ? (
+                  <div className="divide-y divide-black/8">
+                    {igData.posts.map((post) => (
+                      <div key={post.id} className="py-4 flex items-center justify-between gap-6">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <span className="shrink-0 text-xs border border-black/15 px-2.5 py-1 rounded-full">
+                            {mediaTypeLabel(post.mediaType)}
+                          </span>
+                          <a
+                            href={post.permalink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-black/70 truncate hover:text-black transition-colors"
+                            title={post.caption}
+                          >
+                            {post.caption
+                              ? post.caption.slice(0, 80) + (post.caption.length > 80 ? "…" : "")
+                              : "(no caption)"}
+                          </a>
+                        </div>
+                        <div className="shrink-0 flex items-center gap-5 text-xs text-black/40">
+                          <span>{fmtDate(post.timestamp)}</span>
+                          <span>♥ {fmt(post.likeCount)}</span>
+                          <span>💬 {fmt(post.commentsCount)}</span>
+                          <span>🔖 {fmt(post.saved)}</span>
+                          <span title="Reach" className="hidden sm:inline">
+                            👁 {fmt(post.reach)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : igError ? (
+                  <p className="text-sm text-black/40">
+                    Could not load posts. Check your Instagram token permissions.
+                  </p>
+                ) : (
+                  <p className="text-sm text-black/40">No posts found.</p>
+                )}
               </div>
             </>
           )}
 
-          {/* Content Generator tab */}
+          {/* ── Content Generator ── */}
           {tab === "content-generator" && <ContentGenerator />}
 
         </div>
