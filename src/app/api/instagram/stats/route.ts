@@ -1,6 +1,6 @@
 export const revalidate = 60;
 
-const IG_BASE = "https://graph.facebook.com/v20.0";
+const IG_BASE = "https://graph.instagram.com/v20.0";
 
 interface IgMediaItem {
   id: string;
