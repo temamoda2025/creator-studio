@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Nav from "@/components/Nav";
 import Link from "next/link";
 import ContentGenerator from "@/components/ContentGenerator";
+import ContentResearch from "@/components/ContentResearch";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -176,10 +177,11 @@ function ErrorBanner({ message }: { message: string }) {
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "content-generator";
+type Tab = "overview" | "research" | "content-generator";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
+  { id: "research", label: "Content Research" },
   { id: "content-generator", label: "Content Generator" },
 ];
 
@@ -187,6 +189,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>("overview");
+  const [inspireIdea, setInspireIdea] = useState("");
   const [igData, setIgData] = useState<IgStats | null>(null);
   const [igLoading, setIgLoading] = useState(true);
   const [igError, setIgError] = useState<string | null>(null);
@@ -454,8 +457,20 @@ export default function DashboardPage() {
             </>
           )}
 
+          {/* ── Content Research ── */}
+          {tab === "research" && (
+            <ContentResearch
+              onInspire={(idea) => {
+                setInspireIdea(idea);
+                setTab("content-generator");
+              }}
+            />
+          )}
+
           {/* ── Content Generator ── */}
-          {tab === "content-generator" && <ContentGenerator />}
+          {tab === "content-generator" && (
+            <ContentGenerator initialIdea={inspireIdea} />
+          )}
 
         </div>
       </div>

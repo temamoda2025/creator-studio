@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useBrands } from "@/context/BrandsContext";
 
 const FORMATS = ["Reel", "Carousel", "Static Post", "Story"] as const;
 type Format = (typeof FORMATS)[number];
@@ -109,7 +110,12 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-export default function ContentGenerator() {
+export default function ContentGenerator({
+  initialIdea,
+}: {
+  initialIdea?: string;
+}) {
+  const { activeBrand } = useBrands();
   const [brandName, setBrandName] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
   const [contentIdea, setContentIdea] = useState("");
@@ -117,6 +123,20 @@ export default function ContentGenerator() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ContentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeBrand) {
+      setBrandName(activeBrand.name);
+      setTargetAudience(activeBrand.targetAudience);
+    }
+  }, [activeBrand]);
+
+  useEffect(() => {
+    if (initialIdea) {
+      setContentIdea(initialIdea);
+      setResult(null);
+    }
+  }, [initialIdea]);
 
   const generate = async () => {
     if (!brandName.trim() || !contentIdea.trim()) return;
@@ -129,7 +149,14 @@ export default function ContentGenerator() {
       const res = await fetch("/api/content/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandName, targetAudience, contentIdea, format }),
+        body: JSON.stringify({
+          brandName,
+          targetAudience,
+          contentIdea,
+          format,
+          brandVoice: activeBrand?.brandVoice ?? null,
+          brandPositioning: activeBrand?.positioning ?? null,
+        }),
       });
 
       if (!res.ok) {
@@ -154,10 +181,17 @@ export default function ContentGenerator() {
       {/* Form */}
       <div className="bg-white border border-black/10 p-8">
         <div className="max-w-2xl">
-          <h2 className="text-base font-semibold mb-1">ADORAR™ Content Generator</h2>
+          <div className="flex items-start justify-between mb-1">
+            <h2 className="text-base font-semibold">ADORAR™ Content Generator</h2>
+            {activeBrand && (
+              <span className="text-xs border border-black/15 px-2.5 py-1 rounded-full text-black/50 shrink-0 ml-4">
+                {activeBrand.name}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-black/40 mb-8 leading-relaxed">
             Trained on Schwartz, Godin, Hormozi, Suby, and luxury brand strategy.
-            People don't buy products — they buy outcomes, identity, and belonging.
+            People don&apos;t buy products — they buy outcomes, identity, and belonging.
           </p>
 
           <div className="space-y-5">

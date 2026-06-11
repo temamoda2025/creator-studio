@@ -81,7 +81,7 @@ You return structured JSON only. No markdown fences. No explanation. No preamble
 
 export async function POST(request: Request) {
   try {
-    const { brandName, targetAudience, contentIdea, format } =
+    const { brandName, targetAudience, contentIdea, format, brandVoice, brandPositioning } =
       await request.json();
 
     if (!brandName || !contentIdea || !format) {
@@ -105,13 +105,22 @@ export async function POST(request: Request) {
       formatGuidance[format] ||
       "social media post. Optimise for the platform and format best practices.";
 
+    const voiceSection =
+      brandVoice?.toneDescription || brandVoice?.captionExample
+        ? `\n## Brand Voice Profile\n${brandVoice.toneDescription ? `**Tone:** ${brandVoice.toneDescription}\n` : ""}${brandVoice.captionExample ? `**Caption example (match this voice exactly):**\n"${brandVoice.captionExample}"\n` : ""}`
+        : "";
+
+    const positioningLine = brandPositioning
+      ? `**Brand Positioning:** ${brandPositioning}\n`
+      : "";
+
     const userMessage = `Generate ADORAR™ content for this brand and idea:
 
 **Brand:** ${brandName}
-**Target Audience:** ${targetAudience || "Not specified — infer from brand context"}
+${positioningLine}**Target Audience:** ${targetAudience || "Not specified — infer from brand context"}
 **Content Idea / Topic:** ${contentIdea}
 **Format:** ${format} — ${selectedFormatGuidance}
-
+${voiceSection}
 ## Your Task
 
 1. Run a full ADORAR™ analysis on this content idea — go deep on each layer. This is the strategic foundation that everything else is built on.
