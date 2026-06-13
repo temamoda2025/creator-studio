@@ -90,7 +90,7 @@ async function searchTikTok(hashtag: string, limit: number): Promise<ResearchPos
 }
 
 async function searchYouTube(keyword: string, limit: number): Promise<ResearchPost[]> {
-  const items = await runActor("apify~youtube-scraper", {
+  const items = await runActor("streamers~youtube-scraper", {
     searchQueries: [keyword],
     maxResults: limit,
   });
@@ -125,39 +125,33 @@ async function searchYouTube(keyword: string, limit: number): Promise<ResearchPo
 }
 
 async function searchLinkedIn(keyword: string, limit: number): Promise<ResearchPost[]> {
-  const searchUrl = `https://www.linkedin.com/search/results/content/?keywords=${encodeURIComponent(keyword)}&sortBy=%22date_posted%22`;
-  const items = await runActor("curious_coder~linkedin-post-search-scraper", {
-    urls: [searchUrl],
-    limitPerSource: limit,
+  const items = await runActor("harvestapi~linkedin-post-search", {
+    searchQueries: [keyword],
+    maxPosts: limit,
   });
 
   return items.map((item): ResearchPost => {
-    const actor = (item.actor as Record<string, unknown>) || {};
-    const likes =
-      (item.likeCount as number) ||
-      (item.totalReactionCount as number) ||
-      0;
-    const comments = (item.commentCount as number) || 0;
-    const shares = (item.repostCount as number) || 0;
+    const author = (item.author as Record<string, unknown>) || {};
+    const engagement = (item.engagement as Record<string, unknown>) || {};
+    const likes = (engagement.likes as number) || 0;
+    const comments = (engagement.comments as number) || 0;
+    const shares = (engagement.shares as number) || 0;
+    const postedAt = item.postedAt as Record<string, unknown> | string | null;
+    const timestamp =
+      typeof postedAt === "string"
+        ? postedAt
+        : (postedAt?.date as string) || null;
     return {
-      id: String(item.id || item.urn || crypto.randomUUID()),
+      id: String(item.id || crypto.randomUUID()),
       platform: "linkedin",
-      url:
-        (item.postUrl as string) || (item.url as string) || "",
-      caption:
-        (item.text as string) || (item.commentary as string) || "",
-      username:
-        (actor.name as string) ||
-        (item.authorName as string) ||
-        "",
+      url: (item.linkedinUrl as string) || "",
+      caption: (item.content as string) || "",
+      username: (author.name as string) || "",
       likes,
       comments,
       views: 0,
       shares,
-      timestamp:
-        (item.publishedAt as string) ||
-        (item.postedAt as string) ||
-        null,
+      timestamp,
       thumbnailUrl: null,
       engagementScore: likes * 2 + comments * 8 + shares * 12,
     };
@@ -278,7 +272,7 @@ export async function POST(request: Request) {
 
   if (platforms.includes("facebook")) {
     searches.push(
-      searchFacebook(keyword.trim(), limit).catch((e: Error) => {
+      searchFacebook(hashtag, limit).catch((e: Error) => {
         console.error("Facebook search error:", e.message);
         return [];
       })
