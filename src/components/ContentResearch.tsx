@@ -4,13 +4,14 @@ import { useState } from "react";
 import { useBrands } from "@/context/BrandsContext";
 import type { ResearchPost } from "@/types/research";
 
-type Platform = "instagram" | "tiktok" | "youtube" | "linkedin";
+type Platform = "instagram" | "tiktok" | "youtube" | "linkedin" | "facebook";
 
 const PLATFORM_OPTIONS: { id: Platform; label: string }[] = [
   { id: "instagram", label: "Instagram" },
   { id: "tiktok", label: "TikTok" },
   { id: "youtube", label: "YouTube" },
   { id: "linkedin", label: "LinkedIn" },
+  { id: "facebook", label: "Facebook" },
 ];
 
 const PLATFORM_LABEL: Record<Platform, string> = {
@@ -18,6 +19,7 @@ const PLATFORM_LABEL: Record<Platform, string> = {
   tiktok: "TikTok",
   youtube: "YouTube",
   linkedin: "LinkedIn",
+  facebook: "Facebook",
 };
 
 function fmt(n: number): string {
@@ -29,8 +31,9 @@ function fmt(n: number): string {
 const BADGE_STYLES: Record<Platform, { className: string; label: string }> = {
   instagram: { className: "bg-pink-50 text-pink-600 border border-pink-200", label: "IG" },
   tiktok:    { className: "bg-black/6 text-black/50 border border-black/10", label: "TT" },
-  youtube:   { className: "bg-red-50 text-red-600 border border-red-200",   label: "YT" },
+  youtube:   { className: "bg-red-50 text-red-600 border border-red-200",    label: "YT" },
   linkedin:  { className: "bg-blue-50 text-blue-600 border border-blue-200", label: "LI" },
+  facebook:  { className: "bg-blue-50 text-blue-700 border border-blue-300", label: "FB" },
 };
 
 function PlatformBadge({ platform }: { platform: Platform }) {
@@ -53,7 +56,7 @@ function PostCard({
   const hook = firstLine.slice(0, 120) + (firstLine.length > 120 ? "…" : "");
   const preview = post.caption.slice(0, 220);
   const isYouTube = post.platform === "youtube";
-  const isLinkedIn = post.platform === "linkedin";
+  const isLinkedIn = post.platform === "linkedin" || post.platform === "facebook";
 
   return (
     <div className="bg-white border border-black/10 hover:border-black/25 transition-colors flex flex-col group">

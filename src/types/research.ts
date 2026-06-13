@@ -1,6 +1,6 @@
 export interface ResearchPost {
   id: string;
-  platform: "instagram" | "tiktok" | "youtube" | "linkedin";
+  platform: "instagram" | "tiktok" | "youtube" | "linkedin" | "facebook";
   url: string;
   caption: string;
   username: string;

@@ -164,6 +164,55 @@ async function searchLinkedIn(keyword: string, limit: number): Promise<ResearchP
   });
 }
 
+async function searchFacebook(keyword: string, limit: number): Promise<ResearchPost[]> {
+  const items = await runActor("apify~facebook-posts-scraper", {
+    searchTerms: [keyword],
+    resultsLimit: limit,
+  });
+
+  return items.map((item): ResearchPost => {
+    const likes =
+      (item.likes as number) ||
+      (item.likesCount as number) ||
+      (item.reactionsCount as number) ||
+      0;
+    const comments =
+      (item.comments as number) || (item.commentsCount as number) || 0;
+    const shares =
+      (item.shares as number) || (item.sharesCount as number) || 0;
+    const user =
+      (item.user as Record<string, unknown>) ||
+      (item.author as Record<string, unknown>) ||
+      {};
+    return {
+      id: String(item.postId || item.id || crypto.randomUUID()),
+      platform: "facebook",
+      url: (item.url as string) || (item.postUrl as string) || "",
+      caption:
+        (item.text as string) ||
+        (item.message as string) ||
+        (item.story as string) ||
+        "",
+      username:
+        (user.name as string) ||
+        (item.pageName as string) ||
+        (item.authorName as string) ||
+        "",
+      likes,
+      comments,
+      views: (item.videoViewCount as number) || 0,
+      shares,
+      timestamp:
+        (item.time as string) ||
+        (item.date as string) ||
+        (item.createdTime as string) ||
+        null,
+      thumbnailUrl: (item.media as string) || null,
+      engagementScore: likes + comments * 5 + shares * 10,
+    };
+  });
+}
+
 export async function POST(request: Request) {
   if (!APIFY_TOKEN) {
     return NextResponse.json(
@@ -219,6 +268,15 @@ export async function POST(request: Request) {
     searches.push(
       searchLinkedIn(keyword.trim(), limit).catch((e: Error) => {
         console.error("LinkedIn search error:", e.message);
+        return [];
+      })
+    );
+  }
+
+  if (platforms.includes("facebook")) {
+    searches.push(
+      searchFacebook(keyword.trim(), limit).catch((e: Error) => {
+        console.error("Facebook search error:", e.message);
         return [];
       })
     );
