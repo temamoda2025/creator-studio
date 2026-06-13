@@ -25,7 +25,8 @@
       "Bash(npm --prefix /Users/robertamarchesini/creator-studio run dev -- --port 3001)",
       "Bash(python3 -c ' *)",
       "Bash(CLAUDE_CODE_TMPDIR=/tmp ls /Users/robertamarchesini/creator-studio/node_modules/next/dist/docs/01-app/)",
-      "Bash(git -C /Users/robertamarchesini/creator-studio status --short)"
+      "Bash(git -C /Users/robertamarchesini/creator-studio status --short)",
+      "WebFetch(domain:apify.com)"
     ]
   }
 }

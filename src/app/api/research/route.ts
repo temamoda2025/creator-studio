@@ -91,9 +91,8 @@ async function searchTikTok(hashtag: string, limit: number): Promise<ResearchPos
 
 async function searchYouTube(keyword: string, limit: number): Promise<ResearchPost[]> {
   const items = await runActor("apify~youtube-scraper", {
-    searchKeywords: keyword,
+    searchQueries: [keyword],
     maxResults: limit,
-    type: "VIDEO",
   });
 
   return items.map((item): ResearchPost => {
@@ -126,9 +125,10 @@ async function searchYouTube(keyword: string, limit: number): Promise<ResearchPo
 }
 
 async function searchLinkedIn(keyword: string, limit: number): Promise<ResearchPost[]> {
+  const searchUrl = `https://www.linkedin.com/search/results/content/?keywords=${encodeURIComponent(keyword)}&sortBy=%22date_posted%22`;
   const items = await runActor("curious_coder~linkedin-post-search-scraper", {
-    keywords: keyword,
-    resultsLimit: limit,
+    urls: [searchUrl],
+    limitPerSource: limit,
   });
 
   return items.map((item): ResearchPost => {
@@ -164,22 +164,22 @@ async function searchLinkedIn(keyword: string, limit: number): Promise<ResearchP
   });
 }
 
-async function searchFacebook(keyword: string, limit: number): Promise<ResearchPost[]> {
-  const items = await runActor("apify~facebook-posts-scraper", {
-    searchTerms: [keyword],
+async function searchFacebook(hashtag: string, limit: number): Promise<ResearchPost[]> {
+  const items = await runActor("apify~facebook-hashtag-scraper", {
+    keywordList: [hashtag],
     resultsLimit: limit,
   });
 
   return items.map((item): ResearchPost => {
     const likes =
-      (item.likes as number) ||
       (item.likesCount as number) ||
+      (item.likes as number) ||
       (item.reactionsCount as number) ||
       0;
     const comments =
-      (item.comments as number) || (item.commentsCount as number) || 0;
+      (item.commentsCount as number) || (item.comments as number) || 0;
     const shares =
-      (item.shares as number) || (item.sharesCount as number) || 0;
+      (item.sharesCount as number) || (item.shares as number) || 0;
     const user =
       (item.user as Record<string, unknown>) ||
       (item.author as Record<string, unknown>) ||
@@ -194,20 +194,23 @@ async function searchFacebook(keyword: string, limit: number): Promise<ResearchP
         (item.story as string) ||
         "",
       username:
+        (item.authorName as string) ||
         (user.name as string) ||
         (item.pageName as string) ||
-        (item.authorName as string) ||
         "",
       likes,
       comments,
       views: (item.videoViewCount as number) || 0,
       shares,
       timestamp:
+        (item.timestamp as string) ||
         (item.time as string) ||
         (item.date as string) ||
-        (item.createdTime as string) ||
         null,
-      thumbnailUrl: (item.media as string) || null,
+      thumbnailUrl:
+        (item.imageUrl as string) ||
+        (item.media as string) ||
+        null,
       engagementScore: likes + comments * 5 + shares * 10,
     };
   });
