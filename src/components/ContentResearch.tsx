@@ -4,12 +4,21 @@ import { useState } from "react";
 import { useBrands } from "@/context/BrandsContext";
 import type { ResearchPost } from "@/types/research";
 
-type Platform = "instagram" | "tiktok";
+type Platform = "instagram" | "tiktok" | "youtube" | "linkedin";
 
 const PLATFORM_OPTIONS: { id: Platform; label: string }[] = [
   { id: "instagram", label: "Instagram" },
   { id: "tiktok", label: "TikTok" },
+  { id: "youtube", label: "YouTube" },
+  { id: "linkedin", label: "LinkedIn" },
 ];
+
+const PLATFORM_LABEL: Record<Platform, string> = {
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  youtube: "YouTube",
+  linkedin: "LinkedIn",
+};
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -17,16 +26,18 @@ function fmt(n: number): string {
   return n.toLocaleString();
 }
 
+const BADGE_STYLES: Record<Platform, { className: string; label: string }> = {
+  instagram: { className: "bg-pink-50 text-pink-600 border border-pink-200", label: "IG" },
+  tiktok:    { className: "bg-black/6 text-black/50 border border-black/10", label: "TT" },
+  youtube:   { className: "bg-red-50 text-red-600 border border-red-200",   label: "YT" },
+  linkedin:  { className: "bg-blue-50 text-blue-600 border border-blue-200", label: "LI" },
+};
+
 function PlatformBadge({ platform }: { platform: Platform }) {
+  const { className, label } = BADGE_STYLES[platform];
   return (
-    <span
-      className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full ${
-        platform === "instagram"
-          ? "bg-pink-50 text-pink-600 border border-pink-200"
-          : "bg-black/6 text-black/50 border border-black/10"
-      }`}
-    >
-      {platform === "instagram" ? "IG" : "TT"}
+    <span className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full ${className}`}>
+      {label}
     </span>
   );
 }
@@ -41,79 +52,98 @@ function PostCard({
   const firstLine = post.caption.split(/\n/)[0].trim();
   const hook = firstLine.slice(0, 120) + (firstLine.length > 120 ? "…" : "");
   const preview = post.caption.slice(0, 220);
+  const isYouTube = post.platform === "youtube";
+  const isLinkedIn = post.platform === "linkedin";
 
   return (
-    <div className="bg-white border border-black/10 hover:border-black/25 transition-colors p-6 flex flex-col gap-4 group">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <PlatformBadge platform={post.platform} />
-          <span className="text-xs font-medium text-black/60 truncate">
-            @{post.username || "unknown"}
-          </span>
+    <div className="bg-white border border-black/10 hover:border-black/25 transition-colors flex flex-col group">
+      {/* YouTube thumbnail */}
+      {isYouTube && post.thumbnailUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={post.thumbnailUrl}
+          alt={post.caption}
+          className="w-full aspect-video object-cover border-b border-black/8"
+        />
+      )}
+
+      <div className="p-6 flex flex-col gap-4 flex-1">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <PlatformBadge platform={post.platform} />
+            <span className="text-xs font-medium text-black/60 truncate">
+              {isLinkedIn ? post.username : `@${post.username || "unknown"}`}
+            </span>
+          </div>
+          {post.timestamp && (
+            <span className="text-[10px] text-black/25 shrink-0">
+              {new Date(post.timestamp).toLocaleDateString("en-AU", {
+                day: "numeric",
+                month: "short",
+              })}
+            </span>
+          )}
         </div>
-        {post.timestamp && (
-          <span className="text-[10px] text-black/25 shrink-0">
-            {new Date(post.timestamp).toLocaleDateString("en-AU", {
-              day: "numeric",
-              month: "short",
-            })}
-          </span>
-        )}
-      </div>
 
-      {/* Caption */}
-      <div className="flex-1">
-        {post.caption ? (
-          <p className="text-sm text-black/70 leading-relaxed line-clamp-4">
-            {preview}
-            {post.caption.length > 220 && "…"}
-          </p>
-        ) : (
-          <p className="text-sm text-black/25 italic">No caption</p>
-        )}
-      </div>
+        {/* Title / Caption */}
+        <div className="flex-1">
+          {post.caption ? (
+            <p className={`text-sm text-black/70 leading-relaxed line-clamp-4 ${isYouTube ? "font-medium" : ""}`}>
+              {preview}
+              {post.caption.length > 220 && "…"}
+            </p>
+          ) : (
+            <p className="text-sm text-black/25 italic">No content</p>
+          )}
+        </div>
 
-      {/* Metrics */}
-      <div className="flex items-center gap-4 text-xs">
-        <span className="text-black/40">
-          ♥ <span className="font-medium text-black/60">{fmt(post.likes)}</span>
-        </span>
-        <span className="text-black/40">
-          💬 <span className="font-medium text-black/60">{fmt(post.comments)}</span>
-        </span>
-        {post.views > 0 && (
-          <span className="text-black/40">
-            ▶ <span className="font-medium text-black/60">{fmt(post.views)}</span>
-          </span>
-        )}
-        {post.shares > 0 && (
-          <span className="text-black/40">
-            ↗ <span className="font-medium text-black/60">{fmt(post.shares)}</span>
-          </span>
-        )}
-      </div>
+        {/* Metrics */}
+        <div className="flex items-center gap-4 text-xs flex-wrap">
+          {post.likes > 0 && (
+            <span className="text-black/40">
+              {isLinkedIn ? "👍" : "♥"}{" "}
+              <span className="font-medium text-black/60">{fmt(post.likes)}</span>
+            </span>
+          )}
+          {post.comments > 0 && (
+            <span className="text-black/40">
+              💬 <span className="font-medium text-black/60">{fmt(post.comments)}</span>
+            </span>
+          )}
+          {post.views > 0 && (
+            <span className="text-black/40">
+              ▶ <span className="font-medium text-black/60">{fmt(post.views)}</span>
+            </span>
+          )}
+          {post.shares > 0 && (
+            <span className="text-black/40">
+              ↗ <span className="font-medium text-black/60">{fmt(post.shares)}</span>
+            </span>
+          )}
+        </div>
 
-      {/* Actions */}
-      <div className="flex items-center justify-between gap-3 pt-3 border-t border-black/8">
-        {post.url ? (
-          <a
-            href={post.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-black/25 hover:text-black/60 transition-colors"
+        {/* Actions */}
+        <div className="flex items-center justify-between gap-3 pt-3 border-t border-black/8">
+          {post.url ? (
+            <a
+              href={post.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-black/25 hover:text-black/60 transition-colors"
+            >
+              View ↗
+            </a>
+          ) : (
+            <span />
+          )}
+          <button
+            onClick={() => onInspire(hook || post.caption.slice(0, 120))}
+            className="text-xs border border-black/15 text-black/50 hover:text-black hover:border-black/40 px-3 py-1.5 rounded-full transition-colors"
           >
-            View ↗
-          </a>
-        ) : (
-          <span />
-        )}
-        <button
-          onClick={() => onInspire(hook || post.caption.slice(0, 120))}
-          className="text-xs border border-black/15 text-black/50 hover:text-black hover:border-black/40 px-3 py-1.5 rounded-full transition-colors"
-        >
-          Generate with ADORAR™ →
-        </button>
+            Generate with ADORAR™ →
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -302,7 +332,7 @@ export default function ContentResearch({
             </div>
             <p className="text-sm text-black/40">
               Fetching trending content from{" "}
-              {platforms.map((p) => (p === "instagram" ? "Instagram" : "TikTok")).join(" & ")}
+              {platforms.map((p) => PLATFORM_LABEL[p]).join(" & ")}
               …
             </p>
           </div>
@@ -324,8 +354,8 @@ export default function ContentResearch({
             <div>
               <p className="text-xs text-black/30 uppercase tracking-wider mb-1">Results</p>
               <p className="text-sm">
-                <span className="font-semibold">{posts.length}</span> posts for{" "}
-                <span className="font-semibold">#{searchedKeyword}</span>
+                <span className="font-semibold">{posts.length}</span> results for{" "}
+                <span className="font-semibold">"{searchedKeyword}"</span>
                 {" "}· sorted by engagement
               </p>
             </div>
@@ -339,7 +369,7 @@ export default function ContentResearch({
 
           {posts.length === 0 ? (
             <div className="bg-white border border-black/10 p-12 text-center">
-              <p className="text-sm text-black/40 mb-2">No posts found for #{searchedKeyword}.</p>
+              <p className="text-sm text-black/40 mb-2">No results found for "{searchedKeyword}".</p>
               <p className="text-xs text-black/25">
                 Try a more popular hashtag, or check your Apify API token in .env.local.
               </p>

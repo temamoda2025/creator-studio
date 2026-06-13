@@ -89,6 +89,81 @@ async function searchTikTok(hashtag: string, limit: number): Promise<ResearchPos
   });
 }
 
+async function searchYouTube(keyword: string, limit: number): Promise<ResearchPost[]> {
+  const items = await runActor("apify~youtube-scraper", {
+    searchKeywords: keyword,
+    maxResults: limit,
+    type: "VIDEO",
+  });
+
+  return items.map((item): ResearchPost => {
+    const views = (item.viewCount as number) || 0;
+    const likes =
+      (item.likes as number) || (item.likesCount as number) || 0;
+    const comments =
+      (item.commentsCount as number) ||
+      (item.numberOfComments as number) ||
+      0;
+    return {
+      id: String(item.id || crypto.randomUUID()),
+      platform: "youtube",
+      url: (item.url as string) || "",
+      caption: (item.title as string) || "",
+      username:
+        (item.channelName as string) ||
+        (item.channel as string) ||
+        "",
+      likes,
+      comments,
+      views,
+      shares: 0,
+      timestamp:
+        (item.date as string) || (item.publishedAt as string) || null,
+      thumbnailUrl: (item.thumbnailUrl as string) || null,
+      engagementScore: likes + comments * 5 + views * 0.001,
+    };
+  });
+}
+
+async function searchLinkedIn(keyword: string, limit: number): Promise<ResearchPost[]> {
+  const items = await runActor("curious_coder~linkedin-post-search-scraper", {
+    keywords: keyword,
+    resultsLimit: limit,
+  });
+
+  return items.map((item): ResearchPost => {
+    const actor = (item.actor as Record<string, unknown>) || {};
+    const likes =
+      (item.likeCount as number) ||
+      (item.totalReactionCount as number) ||
+      0;
+    const comments = (item.commentCount as number) || 0;
+    const shares = (item.repostCount as number) || 0;
+    return {
+      id: String(item.id || item.urn || crypto.randomUUID()),
+      platform: "linkedin",
+      url:
+        (item.postUrl as string) || (item.url as string) || "",
+      caption:
+        (item.text as string) || (item.commentary as string) || "",
+      username:
+        (actor.name as string) ||
+        (item.authorName as string) ||
+        "",
+      likes,
+      comments,
+      views: 0,
+      shares,
+      timestamp:
+        (item.publishedAt as string) ||
+        (item.postedAt as string) ||
+        null,
+      thumbnailUrl: null,
+      engagementScore: likes * 2 + comments * 8 + shares * 12,
+    };
+  });
+}
+
 export async function POST(request: Request) {
   if (!APIFY_TOKEN) {
     return NextResponse.json(
@@ -126,6 +201,24 @@ export async function POST(request: Request) {
     searches.push(
       searchTikTok(hashtag, limit).catch((e: Error) => {
         console.error("TikTok search error:", e.message);
+        return [];
+      })
+    );
+  }
+
+  if (platforms.includes("youtube")) {
+    searches.push(
+      searchYouTube(keyword.trim(), limit).catch((e: Error) => {
+        console.error("YouTube search error:", e.message);
+        return [];
+      })
+    );
+  }
+
+  if (platforms.includes("linkedin")) {
+    searches.push(
+      searchLinkedIn(keyword.trim(), limit).catch((e: Error) => {
+        console.error("LinkedIn search error:", e.message);
         return [];
       })
     );
