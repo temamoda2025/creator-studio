@@ -145,6 +145,26 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
   );
 }
 
+function CanvaButton({ text, canvaUrl, label }: { text: string; canvaUrl: string; label: string }) {
+  const [state, setState] = useState<"idle" | "done">("idle");
+
+  const open = async () => {
+    await navigator.clipboard.writeText(text).catch(() => {});
+    window.open(canvaUrl, "_blank", "noopener,noreferrer");
+    setState("done");
+    setTimeout(() => setState("idle"), 3000);
+  };
+
+  return (
+    <button
+      onClick={open}
+      className="text-xs text-black/40 hover:text-black transition-colors border border-black/15 px-3 py-1.5 rounded-full hover:border-black/40"
+    >
+      {state === "done" ? "Copied & opened ↗" : label}
+    </button>
+  );
+}
+
 function buildFullScript(script: ReelScript): string {
   const lines: string[] = [];
   lines.push(`HOOK — ${script.hook.timeRange}`);
@@ -372,11 +392,18 @@ export default function ReelScriptGenerator() {
         <div className="space-y-4">
 
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <p className="text-xs uppercase tracking-[0.2em] text-black/30">
               {duration} Reel Script — {selectedBrand?.name}
             </p>
-            <CopyButton text={buildFullScript(result)} label="Copy full script" />
+            <div className="flex gap-2 shrink-0">
+              <CopyButton text={buildFullScript(result)} label="Copy full script" />
+              <CanvaButton
+                text={result.hook.onScreenText || result.hook.voiceover}
+                canvaUrl="https://www.canva.com/create/instagram-reels/"
+                label="Reel cover in Canva ↗"
+              />
+            </div>
           </div>
 
           {/* Hook */}
@@ -419,8 +446,13 @@ export default function ReelScriptGenerator() {
             <p className="text-sm text-black/80 leading-relaxed whitespace-pre-line">
               {result.caption}
             </p>
-            <div className="mt-4">
+            <div className="flex gap-2 mt-4">
               <CopyButton text={result.caption} label="Copy caption" />
+              <CanvaButton
+                text={result.caption}
+                canvaUrl="https://www.canva.com/create/instagram-posts/"
+                label="Create in Canva ↗"
+              />
             </div>
           </div>
 

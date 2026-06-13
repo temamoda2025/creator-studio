@@ -103,9 +103,29 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={copy}
-      className="mt-4 text-xs text-black/40 hover:text-black transition-colors border border-black/15 px-3 py-1.5 rounded-full hover:border-black/40"
+      className="text-xs text-black/40 hover:text-black transition-colors border border-black/15 px-3 py-1.5 rounded-full hover:border-black/40"
     >
       {copied ? "Copied" : "Copy caption"}
+    </button>
+  );
+}
+
+function CanvaButton({ text, canvaUrl, label }: { text: string; canvaUrl: string; label: string }) {
+  const [state, setState] = useState<"idle" | "done">("idle");
+
+  const open = async () => {
+    await navigator.clipboard.writeText(text).catch(() => {});
+    window.open(canvaUrl, "_blank", "noopener,noreferrer");
+    setState("done");
+    setTimeout(() => setState("idle"), 3000);
+  };
+
+  return (
+    <button
+      onClick={open}
+      className="text-xs text-black/40 hover:text-black transition-colors border border-black/15 px-3 py-1.5 rounded-full hover:border-black/40"
+    >
+      {state === "done" ? "Copied & opened ↗" : label}
     </button>
   );
 }
@@ -352,7 +372,14 @@ export default function ContentGenerator({
             <p className="text-sm text-black/80 leading-relaxed whitespace-pre-line">
               {result.caption}
             </p>
-            <CopyButton text={result.caption} />
+            <div className="flex gap-2 mt-4">
+              <CopyButton text={result.caption} />
+              <CanvaButton
+                text={result.caption}
+                canvaUrl="https://www.canva.com/create/instagram-posts/"
+                label="Create in Canva ↗"
+              />
+            </div>
           </ResultCard>
 
           {/* CTA */}
