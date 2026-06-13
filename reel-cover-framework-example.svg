@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <defs>
+    <style>
+      .bg { fill: #f4f0e8; }
+      .ink { fill: #103d43; }
+      .muted { fill: #6c7b73; }
+      .teal { fill: #12a8d4; }
+      .deep { fill: #005469; }
+      .green { fill: #006b48; }
+      .yellow { fill: #f4c542; }
+      .cream { fill: #fffaf0; }
+      .white { fill: #ffffff; }
+      .red { fill: #e43d30; }
+      .shadow { filter: drop-shadow(0 18px 28px rgba(16, 61, 67, .18)); }
+      .title { font: 800 42px Arial, Helvetica, sans-serif; letter-spacing: 0; }
+      .label { font: 700 22px Arial, Helvetica, sans-serif; letter-spacing: 0; }
+      .small { font: 700 17px Arial, Helvetica, sans-serif; letter-spacing: 0; }
+      .tiny { font: 600 14px Arial, Helvetica, sans-serif; letter-spacing: 0; }
+      .hook { font: 900 48px Arial, Helvetica, sans-serif; letter-spacing: 0; }
+      .hook2 { font: 900 43px Arial, Helvetica, sans-serif; letter-spacing: 0; }
+      .hook3 { font: 900 39px Arial, Helvetica, sans-serif; letter-spacing: 0; }
+      .tag { font: 800 18px Arial, Helvetica, sans-serif; letter-spacing: 1px; }
+    </style>
+    <clipPath id="phoneClip">
+      <rect x="0" y="0" width="270" height="480" rx="0"/>
+    </clipPath>
+    <clipPath id="circleClip">
+      <circle cx="135" cy="248" r="86"/>
+    </clipPath>
+    <linearGradient id="photoA" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f9f0dc"/>
+      <stop offset=".5" stop-color="#e7f2f4"/>
+      <stop offset="1" stop-color="#cfdfd5"/>
+    </linearGradient>
+    <linearGradient id="photoB" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f7d9c8"/>
+      <stop offset=".52" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#cfe7ed"/>
+    </linearGradient>
+    <linearGradient id="photoC" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f8f0da"/>
+      <stop offset=".55" stop-color="#f2f6f2"/>
+      <stop offset="1" stop-color="#dcebd8"/>
+    </linearGradient>
+  </defs>
+
+  <rect class="bg" width="1600" height="1000"/>
+  <text x="78" y="92" class="title ink">Reels cover direction for an ADHD parenting coach</text>
+  <text x="80" y="132" class="label muted">Move from generic template headlines to parent-specific emotional hooks.</text>
+
+  <g transform="translate(82 205)">
+    <text x="0" y="-34" class="label ink">Current direction</text>
+    <text x="0" y="-5" class="tiny muted">Consistent, but abstract and heavy.</text>
+    <rect x="0" y="0" width="270" height="480" fill="#eef2f1" class="shadow"/>
+    <g clip-path="url(#phoneClip)">
+      <rect width="270" height="480" fill="url(#photoA)"/>
+      <rect x="0" y="0" width="270" height="480" fill="#ffffff" opacity=".16"/>
+      <circle cx="136" cy="290" r="92" fill="#f3cdb8"/>
+      <path d="M65 260 C70 176, 196 174, 207 260 L221 450 L50 450 Z" fill="#f4d287"/>
+      <circle cx="116" cy="260" r="7" fill="#103d43"/>
+      <circle cx="157" cy="260" r="7" fill="#103d43"/>
+      <path d="M114 304 C132 318, 153 318, 171 304" stroke="#103d43" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <rect x="21" y="28" width="228" height="70" rx="14" class="teal"/>
+      <rect x="41" y="100" width="188" height="70" rx="14" class="teal"/>
+      <rect x="19" y="172" width="232" height="70" rx="14" class="teal"/>
+      <text x="135" y="78" text-anchor="middle" class="hook3 white">THE 5AM</text>
+      <text x="135" y="149" text-anchor="middle" class="hook3 white">ROUTINE</text>
+      <text x="135" y="221" text-anchor="middle" class="hook3 deep">MYTH</text>
+      <rect x="0" y="430" width="270" height="50" fill="#fffaf0"/>
+      <text x="135" y="461" text-anchor="middle" class="small deep">Looks branded, but small-grid meaning is vague</text>
+    </g>
+  </g>
+
+  <g transform="translate(452 205)">
+    <text x="0" y="-34" class="label ink">Fix 1: pain-first hook</text>
+    <text x="0" y="-5" class="tiny muted">Make the parent feel seen immediately.</text>
+    <rect x="0" y="0" width="270" height="480" fill="#fffaf0" class="shadow"/>
+    <g clip-path="url(#phoneClip)">
+      <rect width="270" height="480" fill="url(#photoB)"/>
+      <rect x="0" y="0" width="270" height="480" fill="#fffaf0" opacity=".28"/>
+      <rect x="18" y="22" width="152" height="32" rx="16" class="green"/>
+      <text x="94" y="44" text-anchor="middle" class="tag white">ADHD MORNINGS</text>
+      <circle cx="135" cy="258" r="96" fill="#f4cfbb"/>
+      <path d="M58 254 C67 160, 203 160, 215 254 L232 480 L42 480 Z" fill="#f0cf82"/>
+      <circle cx="110" cy="244" r="7" fill="#103d43"/>
+      <circle cx="160" cy="244" r="7" fill="#103d43"/>
+      <path d="M116 293 C132 281, 152 281, 169 293" stroke="#103d43" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <rect x="18" y="78" width="234" height="122" rx="8" class="white" opacity=".96"/>
+      <text x="30" y="126" class="hook3 ink">Mornings</text>
+      <text x="30" y="173" class="hook3 ink">explode?</text>
+      <rect x="18" y="385" width="234" height="58" rx="8" class="yellow"/>
+      <text x="135" y="421" text-anchor="middle" class="small ink">What to change first</text>
+    </g>
+  </g>
+
+  <g transform="translate(822 205)">
+    <text x="0" y="-34" class="label ink">Fix 2: reframe cover</text>
+    <text x="0" y="-5" class="tiny muted">Short, compassionate, expert-led.</text>
+    <rect x="0" y="0" width="270" height="480" fill="#fffaf0" class="shadow"/>
+    <g clip-path="url(#phoneClip)">
+      <rect width="270" height="480" fill="url(#photoC)"/>
+      <rect x="0" y="0" width="270" height="480" fill="#103d43" opacity=".05"/>
+      <rect x="22" y="24" width="138" height="32" rx="16" class="deep"/>
+      <text x="91" y="46" text-anchor="middle" class="tag white">BEHAVIOUR</text>
+      <circle cx="134" cy="285" r="91" fill="#f4cfbb"/>
+      <path d="M62 280 C71 178, 198 176, 209 280 L225 480 L47 480 Z" fill="#f0cf82"/>
+      <circle cx="109" cy="270" r="7" fill="#103d43"/>
+      <circle cx="158" cy="270" r="7" fill="#103d43"/>
+      <path d="M113 317 C131 331, 154 331, 172 317" stroke="#103d43" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <rect x="0" y="78" width="270" height="148" fill="#006b48"/>
+      <text x="135" y="134" text-anchor="middle" class="hook2 white">It's not</text>
+      <text x="135" y="186" text-anchor="middle" class="hook2 white">defiance</text>
+      <rect x="23" y="392" width="224" height="44" rx="22" class="white" opacity=".95"/>
+      <text x="135" y="421" text-anchor="middle" class="small green">Try this lens instead</text>
+    </g>
+  </g>
+
+  <g transform="translate(1192 205)">
+    <text x="0" y="-34" class="label ink">Fix 3: script/save cover</text>
+    <text x="0" y="-5" class="tiny muted">Clear utility, designed for saves.</text>
+    <rect x="0" y="0" width="270" height="480" fill="#fffaf0" class="shadow"/>
+    <g clip-path="url(#phoneClip)">
+      <rect width="270" height="480" fill="#fffaf0"/>
+      <rect x="0" y="0" width="270" height="120" class="teal"/>
+      <text x="135" y="52" text-anchor="middle" class="tag white">PARENT SCRIPT</text>
+      <text x="135" y="96" text-anchor="middle" class="hook3 white">Say this</text>
+      <text x="135" y="168" text-anchor="middle" class="hook ink">instead</text>
+      <rect x="28" y="205" width="214" height="56" rx="8" fill="#ffffff"/>
+      <text x="50" y="240" class="small ink">1. Name the feeling</text>
+      <rect x="28" y="278" width="214" height="56" rx="8" fill="#ffffff"/>
+      <text x="50" y="313" class="small ink">2. Lower the demand</text>
+      <rect x="28" y="351" width="214" height="56" rx="8" fill="#ffffff"/>
+      <text x="50" y="386" class="small ink">3. Give one next step</text>
+      <circle cx="221" cy="438" r="24" class="green"/>
+      <path d="M214 438 L221 445 L232 431" stroke="#fffaf0" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+
+  <g transform="translate(86 780)">
+    <text x="0" y="0" class="label ink">The new rule</text>
+    <text x="0" y="42" class="hook2 green">One clear parent problem + one emotional promise + one human/brand cue.</text>
+    <text x="0" y="92" class="label muted">Use fewer words, warmer imagery, and stronger ADHD-parent language: mornings, bedtime, transitions, guilt, yelling, fighting, shutdown, overwhelm.</text>
+  </g>
+</svg>

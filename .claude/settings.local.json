@@ -15,7 +15,17 @@
       "Bash(git commit *)",
       "Skill(claude-api)",
       "Bash(npm install *)",
-      "Bash(node -e \"const p = require\\('/Users/robertamarchesini/creator-studio/node_modules/@anthropic-ai/sdk/package.json'\\); console.log\\(p.version\\)\")"
+      "Bash(node -e \"const p = require\\('/Users/robertamarchesini/creator-studio/node_modules/@anthropic-ai/sdk/package.json'\\); console.log\\(p.version\\)\")",
+      "Bash(npx tsc *)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(chromium-cli *)",
+      "Bash(python3 -m json.tool)",
+      "Bash(awk -F= '{print length\\($2\\), \"chars\"}')",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(npm --prefix /Users/robertamarchesini/creator-studio run dev -- --port 3001)",
+      "Bash(python3 -c ' *)",
+      "Bash(CLAUDE_CODE_TMPDIR=/tmp ls /Users/robertamarchesini/creator-studio/node_modules/next/dist/docs/01-app/)",
+      "Bash(git -C /Users/robertamarchesini/creator-studio status --short)"
     ]
   }
 }

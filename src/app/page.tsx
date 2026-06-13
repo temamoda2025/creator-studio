@@ -4,45 +4,57 @@ import Nav from "@/components/Nav";
 const features = [
   {
     number: "01",
-    title: "Brand Blueprint",
+    title: "Content Research",
     description:
-      "Define your visual identity, tone of voice, and content pillars so every post feels unmistakably you.",
+      "Discover what's already going viral on Instagram and TikTok by niche or keyword — so you always know what to create next.",
   },
   {
     number: "02",
-    title: "Content Strategy",
+    title: "ADORAR™ Content Generator",
     description:
-      "Build a repeatable posting system around your niche — from Reels to carousels, always with intention.",
+      "Generate scroll-stopping captions in each brand's unique voice using our proprietary ADORAR™ framework — trained on the world's best copywriters.",
   },
   {
     number: "03",
-    title: "Growth Dashboard",
+    title: "Multi-Brand Management",
     description:
-      "Track engagement, follower growth, and content performance in one clean, distraction-free view.",
+      "Manage up to 10 client brands in one place. Switch brands instantly and keep every voice, tone, and strategy completely separate.",
   },
   {
     number: "04",
-    title: "Caption & Hook Studio",
+    title: "Brand Blueprint",
     description:
-      "Craft captions that stop the scroll. Generate hooks, CTAs, and hashtag sets aligned to your brand voice.",
+      "AI-generated brand strategy using the Ikigai framework — defining voice, pillars, and positioning so every post feels unmistakably on-brand.",
+  },
+  {
+    number: "05",
+    title: "Reel Script Generator",
+    description:
+      "Coming soon — generate high-converting Reel scripts tailored to each brand's niche and audience, ready to film.",
+  },
+  {
+    number: "06",
+    title: "Content Calendar & Scheduling",
+    description:
+      "Coming soon — plan, schedule, and publish across Instagram and TikTok from a single agency-grade calendar.",
   },
 ];
 
 const steps = [
   {
     step: "01",
-    title: "Tell us about your brand",
-    body: "Answer a short onboarding sequence to map your niche, aesthetic, and audience.",
+    title: "Research what works",
+    body: "Search by niche or keyword and instantly surface the viral content your audience is already engaging with.",
   },
   {
     step: "02",
-    title: "Get your Blueprint",
-    body: "Receive a tailored brand document — your north star for every piece of content.",
+    title: "Set up your brands",
+    body: "Add your clients, complete the Brand Blueprint, and let the AI learn each brand's unique voice and positioning.",
   },
   {
     step: "03",
-    title: "Create with confidence",
-    body: "Use your dashboard to plan, draft, and publish content that compounds over time.",
+    title: "Create your version faster",
+    body: "Use ADORAR™ to generate original content inspired by what's working — in the right voice, every time.",
   },
 ];
 
@@ -55,36 +67,35 @@ export default function LandingPage() {
       <section className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-6 pt-14">
         <div className="max-w-4xl mx-auto text-center">
           <p className="text-xs tracking-[0.3em] uppercase text-white/40 mb-6">
-            Tema Moda — Creator Studio
+            Creator Studio — Agency Platform
           </p>
           <h1 className="text-5xl sm:text-7xl font-semibold leading-[1.05] tracking-tight mb-8">
-            Build an Instagram brand that actually sells.
+            Find what works. Create your version faster.
           </h1>
           <p className="text-lg text-white/60 max-w-xl mx-auto mb-10">
-            From brand blueprint to content calendar — everything a fashion creator
-            needs to grow with clarity and consistency.
+            The AI-powered platform that discovers viral content in any niche, then helps you create original content for every client brand — in seconds.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/onboarding"
               className="bg-white text-black text-sm font-medium px-8 py-3.5 rounded-full hover:bg-white/90 transition-colors"
             >
-              Start your studio
+              Set up your first brand
             </Link>
             <Link
-              href="/brand"
+              href="/dashboard"
               className="text-white/60 text-sm hover:text-white transition-colors"
             >
-              View sample blueprint →
+              Go to dashboard →
             </Link>
           </div>
         </div>
 
         <div className="mt-24 w-full max-w-6xl mx-auto border-t border-white/10 pt-10 grid grid-cols-3 gap-8 text-center pb-16">
           {[
-            { stat: "3×", label: "avg engagement lift" },
-            { stat: "90 days", label: "to brand clarity" },
-            { stat: "100%", label: "built for fashion creators" },
+            { stat: "10", label: "client brands per workspace" },
+            { stat: "2 platforms", label: "Instagram & TikTok research" },
+            { stat: "ADORAR™", label: "proprietary content framework" },
           ].map(({ stat, label }) => (
             <div key={label}>
               <p className="text-3xl font-semibold text-white">{stat}</p>
@@ -100,8 +111,8 @@ export default function LandingPage() {
           <p className="text-xs tracking-[0.3em] uppercase text-black/30 mb-4">
             What&apos;s inside
           </p>
-          <h2 className="text-4xl font-semibold tracking-tight mb-16 max-w-sm">
-            Everything in one studio.
+          <h2 className="text-4xl font-semibold tracking-tight mb-16 max-w-md">
+            Everything an agency needs. Nothing it doesn&apos;t.
           </h2>
           <div className="grid sm:grid-cols-2 gap-px bg-black/10 border border-black/10">
             {features.map(({ number, title, description }) => (
@@ -122,7 +133,7 @@ export default function LandingPage() {
             How it works
           </p>
           <h2 className="text-4xl font-semibold tracking-tight mb-20">
-            Three steps to your brand.
+            From research to publish in three steps.
           </h2>
           <div className="grid sm:grid-cols-3 gap-12">
             {steps.map(({ step, title, body }) => (
@@ -141,17 +152,17 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-8 border border-black p-12">
           <div>
             <h2 className="text-3xl font-semibold tracking-tight mb-2">
-              Ready to build your brand?
+              Ready to scale your content?
             </h2>
             <p className="text-sm text-black/50">
-              Takes less than 5 minutes to get your Blueprint.
+              Set up your first brand in under 5 minutes.
             </p>
           </div>
           <Link
             href="/onboarding"
             className="shrink-0 bg-black text-white text-sm font-medium px-8 py-3.5 rounded-full hover:bg-black/80 transition-colors"
           >
-            Start for free
+            Get started free
           </Link>
         </div>
       </section>
@@ -159,9 +170,9 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-black/10 px-6 py-8">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm font-semibold tracking-widest uppercase">Tema Moda</p>
+          <p className="text-sm font-semibold tracking-widest uppercase">Creator Studio</p>
           <p className="text-xs text-black/40">
-            © 2026 Tema Moda Creator Studio. All rights reserved.
+            © 2026 Creator Studio. All rights reserved.
           </p>
         </div>
       </footer>

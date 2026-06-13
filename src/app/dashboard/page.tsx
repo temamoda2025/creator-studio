@@ -5,6 +5,8 @@ import Nav from "@/components/Nav";
 import Link from "next/link";
 import ContentGenerator from "@/components/ContentGenerator";
 import ContentResearch from "@/components/ContentResearch";
+import CaptionHistory from "@/components/CaptionHistory";
+import ReelScriptGenerator from "@/components/ReelScriptGenerator";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -177,12 +179,14 @@ function ErrorBanner({ message }: { message: string }) {
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "research" | "content-generator";
+type Tab = "overview" | "research" | "content-generator" | "reel-scripts" | "history";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "research", label: "Content Research" },
   { id: "content-generator", label: "Content Generator" },
+  { id: "reel-scripts", label: "Reel Scripts" },
+  { id: "history", label: "History" },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -471,6 +475,12 @@ export default function DashboardPage() {
           {tab === "content-generator" && (
             <ContentGenerator initialIdea={inspireIdea} />
           )}
+
+          {/* ── Reel Scripts ── */}
+          {tab === "reel-scripts" && <ReelScriptGenerator />}
+
+          {/* ── History ── */}
+          {tab === "history" && <CaptionHistory />}
 
         </div>
       </div>

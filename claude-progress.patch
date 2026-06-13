@@ -1,0 +1,16 @@
+diff --git a/.claude/settings.local.json b/.claude/settings.local.json
+index 654fc83..496a181 100644
+--- a/.claude/settings.local.json
++++ b/.claude/settings.local.json
+@@ -15,7 +15,10 @@
+       "Bash(git commit *)",
+       "Skill(claude-api)",
+       "Bash(npm install *)",
+-      "Bash(node -e \"const p = require\\('/Users/robertamarchesini/creator-studio/node_modules/@anthropic-ai/sdk/package.json'\\); console.log\\(p.version\\)\")"
++      "Bash(node -e \"const p = require\\('/Users/robertamarchesini/creator-studio/node_modules/@anthropic-ai/sdk/package.json'\\); console.log\\(p.version\\)\")",
++      "Bash(npx tsc *)",
++      "Bash(echo \"PID: $!\")",
++      "Bash(chromium-cli *)"
+     ]
+   }
+ }

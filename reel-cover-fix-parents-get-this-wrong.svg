@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1400" viewBox="0 0 900 1400">
+  <defs>
+    <style>
+      .bg { fill: #f7f2e8; }
+      .teal { fill: #16a8d2; }
+      .deep { fill: #00546a; }
+      .green { fill: #006a49; }
+      .cream { fill: #fffaf0; }
+      .white { fill: #ffffff; }
+      .ink { fill: #123e44; }
+      .muted { fill: #60756e; }
+      .title { font: 900 72px Arial, Helvetica, sans-serif; letter-spacing: 0; }
+      .title2 { font: 900 62px Arial, Helvetica, sans-serif; letter-spacing: 0; }
+      .tag { font: 800 26px Arial, Helvetica, sans-serif; letter-spacing: 1.5px; }
+      .small { font: 700 26px Arial, Helvetica, sans-serif; letter-spacing: 0; }
+      .name { font: 900 32px Arial, Helvetica, sans-serif; letter-spacing: 0; }
+      .role { font: 700 19px Arial, Helvetica, sans-serif; letter-spacing: 0; }
+    </style>
+    <linearGradient id="room" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#edf4f4"/>
+      <stop offset=".5" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d9e9e5"/>
+    </linearGradient>
+    <clipPath id="frame">
+      <rect width="900" height="1400"/>
+    </clipPath>
+  </defs>
+
+  <rect class="bg" width="900" height="1400"/>
+  <g clip-path="url(#frame)">
+    <rect width="900" height="1400" fill="url(#room)"/>
+    <rect x="0" y="0" width="250" height="1400" fill="#ffffff" opacity=".45"/>
+    <path d="M614 300 C720 344, 804 442, 820 586 C676 564, 595 469, 614 300Z" fill="#72947d" opacity=".75"/>
+    <path d="M656 330 C710 430, 734 498, 742 624" stroke="#123e44" stroke-width="7" opacity=".25" fill="none"/>
+    <circle cx="450" cy="160" r="34" fill="#fffaf0" opacity=".95"/>
+
+    <circle cx="452" cy="675" r="178" fill="#f4cdb7"/>
+    <path d="M278 647 C290 438, 709 438, 720 650 L757 1400 L221 1400 Z" fill="#f0d083"/>
+    <rect x="223" y="855" width="554" height="545" rx="60" fill="#092f80"/>
+    <circle cx="369" cy="640" r="14" fill="#123e44"/>
+    <circle cx="520" cy="640" r="14" fill="#123e44"/>
+    <path d="M377 744 C422 783, 486 783, 532 744" stroke="#123e44" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <circle cx="451" cy="853" r="18" fill="#151515"/>
+    <rect x="442" y="868" width="18" height="140" rx="9" fill="#151515"/>
+
+    <rect x="54" y="84" width="260" height="58" rx="29" class="green"/>
+    <text x="184" y="123" text-anchor="middle" class="tag cream">ADHD PARENTING</text>
+
+    <rect x="54" y="171" width="792" height="330" rx="22" class="cream" opacity=".96"/>
+    <text x="90" y="258" class="title ink">It's not</text>
+    <text x="90" y="342" class="title ink">bad parenting.</text>
+    <rect x="90" y="372" width="520" height="72" rx="12" class="teal"/>
+    <text x="112" y="425" class="title2 white">It's unmet needs.</text>
+
+    <rect x="54" y="1190" width="470" height="88" rx="12" fill="#ffffff" opacity=".88"/>
+    <text x="82" y="1235" class="name ink">SHARON COLLON</text>
+    <text x="82" y="1265" class="role muted">PCC ADHD Coach and Parenting Expert</text>
+
+    <circle cx="764" cy="1225" r="46" class="green"/>
+    <path d="M748 1224 L766 1242 L793 1205" stroke="#fffaf0" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

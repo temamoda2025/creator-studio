@@ -166,6 +166,16 @@ export default function ContentGenerator({
 
       const data: ContentResult = await res.json();
       setResult(data);
+
+      const history = JSON.parse(localStorage.getItem("adorar_caption_history") ?? "[]");
+      history.unshift({
+        id: crypto.randomUUID(),
+        caption: data.caption,
+        brandName,
+        topic: contentIdea,
+        generatedAt: new Date().toISOString(),
+      });
+      localStorage.setItem("adorar_caption_history", JSON.stringify(history));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
