@@ -28,7 +28,8 @@
       "Bash(git -C /Users/robertamarchesini/creator-studio status --short)",
       "WebFetch(domain:apify.com)",
       "Bash(vercel logs *)",
-      "Bash(npx vercel *)"
+      "Bash(npx vercel *)",
+      "Bash(npx next *)"
     ]
   }
 }
