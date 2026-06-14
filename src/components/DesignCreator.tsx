@@ -49,9 +49,81 @@ const TEMPLATES = [
 
 type TemplateId = (typeof TEMPLATES)[number]["id"];
 
+// ─── Fonts ────────────────────────────────────────────────────────────────────
+
+const FONT_CATEGORIES = [
+  {
+    label: "Luxury",
+    fonts: [
+      { family: "Playfair Display",   label: "Playfair Display"   },
+      { family: "Cormorant Garamond", label: "Cormorant Garamond" },
+      { family: "Libre Baskerville",  label: "Libre Baskerville"  },
+    ],
+  },
+  {
+    label: "Modern",
+    fonts: [
+      { family: "Montserrat", label: "Montserrat" },
+      { family: "Inter",      label: "Inter"      },
+      { family: "Raleway",    label: "Raleway"    },
+    ],
+  },
+  {
+    label: "Bold",
+    fonts: [
+      { family: "Oswald",     label: "Oswald"     },
+      { family: "Anton",      label: "Anton"      },
+      { family: "Bebas Neue", label: "Bebas Neue" },
+    ],
+  },
+  {
+    label: "Elegant",
+    fonts: [
+      { family: "Lato",         label: "Lato"         },
+      { family: "Josefin Sans", label: "Josefin Sans" },
+      { family: "Nunito",       label: "Nunito"       },
+    ],
+  },
+  {
+    label: "Casual",
+    fonts: [
+      { family: "Poppins",    label: "Poppins"    },
+      { family: "Quicksand",  label: "Quicksand"  },
+      { family: "Pacifico",   label: "Pacifico"   },
+    ],
+  },
+] as const;
+
+type FontFamily = (typeof FONT_CATEGORIES)[number]["fonts"][number]["family"];
+
+const DEFAULT_FONT: FontFamily = "Inter";
+
+// Single request for all 15 fonts, sorted alphabetically as Google recommends
+const GOOGLE_FONTS_HREF =
+  "https://fonts.googleapis.com/css2?" +
+  "family=Anton&" +
+  "family=Bebas+Neue&" +
+  "family=Cormorant+Garamond:wght@300;400;500;600;700&" +
+  "family=Inter:wght@300;400;500;600;700&" +
+  "family=Josefin+Sans:wght@300;400;500;600;700&" +
+  "family=Lato:wght@300;400;700&" +
+  "family=Libre+Baskerville:wght@400;700&" +
+  "family=Montserrat:wght@300;400;500;600;700&" +
+  "family=Nunito:wght@300;400;500;600;700&" +
+  "family=Oswald:wght@300;400;500;600;700&" +
+  "family=Pacifico&" +
+  "family=Playfair+Display:wght@300;400;500;600;700&" +
+  "family=Poppins:wght@300;400;500;600;700&" +
+  "family=Quicksand:wght@300;400;500;600;700&" +
+  "family=Raleway:wght@300;400;500;600;700&" +
+  "display=swap";
+
 // ─── Canvas helpers ───────────────────────────────────────────────────────────
 
-const STACK = '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+// Module-level mutable: set once at the top of each draw() call, safe because
+// canvas rendering is synchronous and single-threaded.
+const FALLBACK = 'system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+let _fontStack = FALLBACK;
 
 function setFont(
   ctx: CanvasRenderingContext2D,
@@ -59,7 +131,7 @@ function setFont(
   weight: 300 | 400 | 500 | 600 | 700,
   spacing = "0px"
 ) {
-  ctx.font = `${weight} ${size}px ${STACK}`;
+  ctx.font = `${weight} ${size}px ${_fontStack}`;
   try {
     (ctx as unknown as Record<string, unknown>).letterSpacing = spacing;
   } catch { /* browser may not support */ }
@@ -127,7 +199,6 @@ function drawBoldHeadline(
   const startY = (H - lines.length * lh) / 2;
   lines.forEach((l, i) => ctx.fillText(l, W / 2, startY + i * lh));
 
-  // Small brand name, bottom-left
   const brandSize = Math.max(14, Math.round(W * 0.026));
   setFont(ctx, brandSize, 300, "5px");
   ctx.fillStyle = hex2rgba(textColor, 0.35);
@@ -143,7 +214,6 @@ function drawMinimalQuote(
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.1);
 
-  // Decorative opening quote
   const quoteSize = Math.round(W * 0.18);
   setFont(ctx, quoteSize, 300, "0px");
   ctx.fillStyle = hex2rgba(textColor, 0.1);
@@ -316,13 +386,9 @@ function drawBrandedFrame(
 
   ctx.strokeStyle = hex2rgba(textColor, 0.75);
   ctx.lineWidth = 2;
-  // TL
   ctx.beginPath(); ctx.moveTo(PAD, PAD + cornerLen); ctx.lineTo(PAD, PAD); ctx.lineTo(PAD + cornerLen, PAD); ctx.stroke();
-  // TR
   ctx.beginPath(); ctx.moveTo(W - PAD - cornerLen, PAD); ctx.lineTo(W - PAD, PAD); ctx.lineTo(W - PAD, PAD + cornerLen); ctx.stroke();
-  // BL
   ctx.beginPath(); ctx.moveTo(PAD, H - PAD - cornerLen); ctx.lineTo(PAD, H - PAD); ctx.lineTo(PAD + cornerLen, H - PAD); ctx.stroke();
-  // BR
   ctx.beginPath(); ctx.moveTo(W - PAD - cornerLen, H - PAD); ctx.lineTo(W - PAD, H - PAD); ctx.lineTo(W - PAD, H - PAD - cornerLen); ctx.stroke();
 
   const brandSize = Math.max(12, Math.round(W * 0.025));
@@ -361,6 +427,7 @@ interface DrawOptions {
   overlayOpacity: number;
   logo: HTMLImageElement | null;
   logoPosition: "top-left" | "top-right";
+  fontFamily: string;
 }
 
 function draw(
@@ -370,8 +437,11 @@ function draw(
   brandName: string, handle: string, caption: string,
   opts: DrawOptions
 ) {
-  const { template, bgImage, overlayOpacity, logo, logoPosition } = opts;
+  const { template, bgImage, overlayOpacity, logo, logoPosition, fontFamily } = opts;
   const PAD = Math.round(Math.min(W, H) * 0.07);
+
+  // Set font stack once for the entire draw call
+  _fontStack = `"${fontFamily}", ${FALLBACK}`;
 
   ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, W, H);
@@ -388,24 +458,12 @@ function draw(
   }
 
   switch (template) {
-    case "bold-headline":
-      drawBoldHeadline(ctx, W, H, textColor, brandName, caption);
-      break;
-    case "minimal-quote":
-      drawMinimalQuote(ctx, W, H, textColor, handle, caption);
-      break;
-    case "split-layout":
-      drawSplitLayout(ctx, W, H, textColor, brandName, handle, caption);
-      break;
-    case "full-bleed":
-      drawFullBleed(ctx, W, H, textColor, brandName, handle, caption);
-      break;
-    case "text-only":
-      drawTextOnly(ctx, W, H, textColor, caption);
-      break;
-    case "branded-frame":
-      drawBrandedFrame(ctx, W, H, textColor, brandName, handle, caption);
-      break;
+    case "bold-headline":  drawBoldHeadline(ctx, W, H, textColor, brandName, caption); break;
+    case "minimal-quote":  drawMinimalQuote(ctx, W, H, textColor, handle, caption); break;
+    case "split-layout":   drawSplitLayout(ctx, W, H, textColor, brandName, handle, caption); break;
+    case "full-bleed":     drawFullBleed(ctx, W, H, textColor, brandName, handle, caption); break;
+    case "text-only":      drawTextOnly(ctx, W, H, textColor, caption); break;
+    case "branded-frame":  drawBrandedFrame(ctx, W, H, textColor, brandName, handle, caption); break;
   }
 
   if (logo) {
@@ -427,7 +485,7 @@ function draw(
 const THUMB_PX = 180;
 
 function TemplateThumbnail({
-  id, label, desc, isSelected, onClick, bgColor, textColor,
+  id, label, desc, isSelected, onClick, bgColor, textColor, fontFamily, fontsReady,
 }: {
   id: TemplateId;
   label: string;
@@ -436,25 +494,27 @@ function TemplateThumbnail({
   onClick: () => void;
   bgColor: string;
   textColor: string;
+  fontFamily: string;
+  fontsReady: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    canvas.width = THUMB_PX;
-    canvas.height = THUMB_PX;
-    draw(ctx, THUMB_PX, THUMB_PX, bgColor, textColor, "BRAND", "@brand",
-      "Preview headline text for layout", {
-        template: id,
-        bgImage: null,
-        overlayOpacity: 0,
-        logo: null,
-        logoPosition: "top-right",
-      });
-  }, [id, bgColor, textColor]);
+    const doRender = () => {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      canvas.width = THUMB_PX;
+      canvas.height = THUMB_PX;
+      draw(ctx, THUMB_PX, THUMB_PX, bgColor, textColor, "BRAND", "@brand",
+        "Preview headline text for layout", {
+          template: id, bgImage: null, overlayOpacity: 0,
+          logo: null, logoPosition: "top-right", fontFamily,
+        });
+    };
+    document.fonts.load(`500 1em "${fontFamily}"`).then(doRender, doRender);
+  }, [id, bgColor, textColor, fontFamily, fontsReady]);
 
   return (
     <button
@@ -489,6 +549,8 @@ export default function DesignCreator() {
   const [bgColor,        setBgColor]        = useState(BG_PRESETS[0].hex);
   const [textColor,      setTextColor]      = useState<"#ffffff" | "#000000">("#ffffff");
   const [templateId,     setTemplateId]     = useState<TemplateId>("bold-headline");
+  const [fontFamily,     setFontFamily]     = useState<string>(DEFAULT_FONT);
+  const [fontsReady,     setFontsReady]     = useState(false);
 
   // Logo
   const [logoImg,        setLogoImg]        = useState<HTMLImageElement | null>(null);
@@ -506,18 +568,42 @@ export default function DesignCreator() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError,   setAiError]   = useState<string | null>(null);
 
+  // ── Derived ──────────────────────────────────────────────────────────────────
   const fmt      = FORMATS.find((f) => f.id === formatId)!;
   const scale    = Math.min(MAX_PREVIEW / fmt.w, MAX_PREVIEW / fmt.h);
   const prevW    = Math.round(fmt.w * scale);
   const prevH    = Math.round(fmt.h * scale);
-  const brandName  = activeBrand?.name ?? "Your Brand";
-  // Strip any leading @ the user may have typed in Brand Blueprint to avoid @@
-  const rawHandle  = activeBrand?.handle
+  const brandName = activeBrand?.name ?? "Your Brand";
+  // Strip any leading @ the user typed in Brand Blueprint to avoid @@
+  const rawHandle = activeBrand?.handle
     ? activeBrand.handle.replace(/^@+/, "")
     : brandName.toLowerCase().replace(/\s+/g, "");
   const handle = `@${rawHandle}`;
 
-  // Load logo from localStorage when active brand changes
+  // ── Load all Google Fonts once on mount ──────────────────────────────────────
+  useEffect(() => {
+    if (document.getElementById("gf-design-creator")) {
+      // Already injected (e.g. hot-reload) — still wait for fonts
+      document.fonts.ready.then(() => setFontsReady(true));
+      return;
+    }
+    const link = document.createElement("link");
+    link.id   = "gf-design-creator";
+    link.rel  = "stylesheet";
+    link.href = GOOGLE_FONTS_HREF;
+    link.onload = () => document.fonts.ready.then(() => setFontsReady(true));
+    document.head.appendChild(link);
+  }, []);
+
+  // ── Restore font per brand from localStorage ─────────────────────────────────
+  useEffect(() => {
+    if (!activeBrand) return;
+    const saved = localStorage.getItem(`font-${activeBrand.id}`);
+    if (saved) setFontFamily(saved);
+    else setFontFamily(DEFAULT_FONT);
+  }, [activeBrand]);
+
+  // ── Restore logo per brand from localStorage ─────────────────────────────────
   useEffect(() => {
     if (!activeBrand) { setLogoImg(null); setLogoDataUrl(null); return; }
     const saved = localStorage.getItem(`logo-${activeBrand.id}`);
@@ -530,6 +616,14 @@ export default function DesignCreator() {
       setLogoDataUrl(null);
     }
   }, [activeBrand]);
+
+  // ── Event handlers ───────────────────────────────────────────────────────────
+  const pickFont = (family: string) => {
+    setFontFamily(family);
+    if (activeBrand) {
+      try { localStorage.setItem(`font-${activeBrand.id}`, family); } catch { /* quota */ }
+    }
+  };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -578,16 +672,16 @@ export default function DesignCreator() {
     setAiLoading(true);
     setAiError(null);
     try {
-      const res = await fetch("/api/image/generate", {
+      const res  = await fetch("/api/image/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: aiPrompt.trim(), formatId }),
       });
       const json = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
-      const img = new Image();
+      const img  = new Image();
       img.onload = () => { setBgImg(img); setBgImgThumb(json.dataUrl); };
-      img.src = json.dataUrl;
+      img.src    = json.dataUrl;
     } catch (e) {
       setAiError(e instanceof Error ? e.message : "Generation failed");
     } finally {
@@ -595,21 +689,24 @@ export default function DesignCreator() {
     }
   };
 
+  // ── Canvas rendering ─────────────────────────────────────────────────────────
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    canvas.width  = fmt.w;
-    canvas.height = fmt.h;
-    draw(ctx, fmt.w, fmt.h, bgColor, textColor, brandName, handle, caption, {
-      template: templateId,
-      bgImage: bgImg,
-      overlayOpacity,
-      logo: logoImg,
-      logoPosition,
-    });
-  }, [fmt, bgColor, textColor, brandName, handle, caption, templateId, bgImg, overlayOpacity, logoImg, logoPosition]);
+    const doRender = () => {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      canvas.width  = fmt.w;
+      canvas.height = fmt.h;
+      draw(ctx, fmt.w, fmt.h, bgColor, textColor, brandName, handle, caption, {
+        template: templateId, bgImage: bgImg, overlayOpacity,
+        logo: logoImg, logoPosition, fontFamily,
+      });
+    };
+    // Wait for the selected font before drawing; fall back if unavailable
+    document.fonts.load(`500 1em "${fontFamily}"`).then(doRender, doRender);
+  }, [fmt, bgColor, textColor, brandName, handle, caption, templateId,
+      bgImg, overlayOpacity, logoImg, logoPosition, fontFamily, fontsReady]);
 
   useEffect(() => { redraw(); }, [redraw]);
 
@@ -622,6 +719,7 @@ export default function DesignCreator() {
     a.click();
   };
 
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
 
@@ -636,34 +734,28 @@ export default function DesignCreator() {
           )}
         </div>
         <p className="text-sm text-black/40 mb-8 leading-relaxed">
-          Create branded social graphics. Choose a template and format, paste your caption, pick a colour — then download at full resolution.
+          Create branded social graphics. Choose a template and format, paste your caption, pick a colour and font — then download at full resolution.
         </p>
 
         <div className="space-y-6 max-w-2xl">
 
           {/* Format */}
           <div>
-            <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
-              Format
-            </label>
+            <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">Format</label>
             <select
               value={formatId}
               onChange={(e) => setFormatId(e.target.value)}
               className="w-full border border-black/15 px-4 py-3 text-sm focus:outline-none focus:border-black/40 transition-colors rounded-none bg-white appearance-none"
             >
               {FORMATS.map(({ id, label, w, h }) => (
-                <option key={id} value={id}>
-                  {label} — {w}×{h}px
-                </option>
+                <option key={id} value={id}>{label} — {w}×{h}px</option>
               ))}
             </select>
           </div>
 
           {/* Background colour */}
           <div>
-            <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
-              Background Colour
-            </label>
+            <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">Background Colour</label>
             <div className="flex gap-2 flex-wrap items-center">
               {BG_PRESETS.map(({ label, hex }) => (
                 <button
@@ -692,9 +784,7 @@ export default function DesignCreator() {
 
           {/* Text colour */}
           <div>
-            <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
-              Text Colour
-            </label>
+            <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">Text Colour</label>
             <div className="flex gap-2">
               {(["#ffffff", "#000000"] as const).map((c) => (
                 <button
@@ -711,11 +801,37 @@ export default function DesignCreator() {
             </div>
           </div>
 
+          {/* Font picker */}
+          <div>
+            <label className="block text-xs text-black/40 uppercase tracking-wider mb-3">Font</label>
+            <div className="space-y-4">
+              {FONT_CATEGORIES.map((cat) => (
+                <div key={cat.label}>
+                  <p className="text-[10px] text-black/25 uppercase tracking-[0.15em] mb-2">{cat.label}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {cat.fonts.map((f) => (
+                      <button
+                        key={f.family}
+                        onClick={() => pickFont(f.family)}
+                        style={{ fontFamily: `"${f.family}", serif` }}
+                        className={`text-sm px-3 py-1.5 border transition-colors ${
+                          fontFamily === f.family
+                            ? "border-black bg-black text-white"
+                            : "border-black/15 text-black/70 hover:border-black/40"
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Logo upload */}
           <div>
-            <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
-              Logo
-            </label>
+            <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">Logo</label>
             {logoDataUrl ? (
               <div className="flex items-center gap-4">
                 <div className="w-20 h-12 border border-black/10 flex items-center justify-center p-2 shrink-0" style={{ background: bgColor }}>
@@ -736,10 +852,7 @@ export default function DesignCreator() {
                       </button>
                     ))}
                   </div>
-                  <button
-                    onClick={removeLogo}
-                    className="text-xs text-black/35 hover:text-black/70 transition-colors text-left"
-                  >
+                  <button onClick={removeLogo} className="text-xs text-black/35 hover:text-black/70 transition-colors text-left">
                     Remove logo ×
                   </button>
                 </div>
@@ -752,16 +865,7 @@ export default function DesignCreator() {
                 Upload PNG or SVG logo ↑
               </button>
             )}
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept=".png,.svg,image/png,image/svg+xml"
-              onChange={handleLogoUpload}
-              className="hidden"
-            />
-            {!activeBrand && logoDataUrl && (
-              <p className="text-[11px] text-black/30 mt-1.5">Logo saved per brand — set an active brand to save it.</p>
-            )}
+            <input ref={logoInputRef} type="file" accept=".png,.svg,image/png,image/svg+xml" onChange={handleLogoUpload} className="hidden" />
             {activeBrand && !logoDataUrl && (
               <p className="text-[11px] text-black/30 mt-1.5">Saved per brand in your browser.</p>
             )}
@@ -769,11 +873,8 @@ export default function DesignCreator() {
 
           {/* Background image */}
           <div>
-            <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
-              Background Image
-            </label>
+            <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">Background Image</label>
 
-            {/* Mode toggle */}
             <div className="flex gap-2 mb-3">
               {(["upload", "ai"] as const).map((mode) => (
                 <button
@@ -788,7 +889,6 @@ export default function DesignCreator() {
               ))}
             </div>
 
-            {/* Upload mode */}
             {bgMode === "upload" && !bgImgThumb && (
               <button
                 onClick={() => bgInputRef.current?.click()}
@@ -798,7 +898,6 @@ export default function DesignCreator() {
               </button>
             )}
 
-            {/* AI Generate mode */}
             {bgMode === "ai" && !bgImgThumb && (
               <div className="space-y-2">
                 <textarea
@@ -816,13 +915,10 @@ export default function DesignCreator() {
                 >
                   {aiLoading ? "Generating…" : "Generate with AI ↗"}
                 </button>
-                {aiError && (
-                  <p className="text-[11px] text-red-500 leading-snug">{aiError}</p>
-                )}
+                {aiError && <p className="text-[11px] text-red-500 leading-snug">{aiError}</p>}
               </div>
             )}
 
-            {/* Active background preview + controls (both modes) */}
             {bgImgThumb && (
               <div className="space-y-3">
                 <div className="flex items-center gap-4">
@@ -831,13 +927,8 @@ export default function DesignCreator() {
                     <img src={bgImgThumb} alt="Background" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <p className="text-[11px] text-black/50">
-                      {bgMode === "ai" ? "AI generated" : "Uploaded photo"}
-                    </p>
-                    <button
-                      onClick={removeBgImage}
-                      className="text-[11px] text-black/35 hover:text-black/70 transition-colors text-left"
-                    >
+                    <p className="text-[11px] text-black/50">{bgMode === "ai" ? "AI generated" : "Uploaded photo"}</p>
+                    <button onClick={removeBgImage} className="text-[11px] text-black/35 hover:text-black/70 transition-colors text-left">
                       Remove ×
                     </button>
                   </div>
@@ -845,10 +936,7 @@ export default function DesignCreator() {
                 <div className="flex items-center gap-3">
                   <span className="text-[11px] text-black/40 shrink-0">Overlay</span>
                   <input
-                    type="range"
-                    min={0}
-                    max={80}
-                    step={5}
+                    type="range" min={0} max={80} step={5}
                     value={Math.round(overlayOpacity * 100)}
                     onChange={(e) => setOverlayOpacity(Number(e.target.value) / 100)}
                     className="flex-1 accent-black cursor-pointer"
@@ -863,13 +951,7 @@ export default function DesignCreator() {
               </div>
             )}
 
-            <input
-              ref={bgInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleBgUpload}
-              className="hidden"
-            />
+            <input ref={bgInputRef} type="file" accept="image/*" onChange={handleBgUpload} className="hidden" />
           </div>
 
         </div>
@@ -889,6 +971,8 @@ export default function DesignCreator() {
               onClick={() => setTemplateId(t.id)}
               bgColor={bgColor}
               textColor={textColor}
+              fontFamily={fontFamily}
+              fontsReady={fontsReady}
             />
           ))}
         </div>
@@ -901,22 +985,15 @@ export default function DesignCreator() {
         <div className="bg-white border border-black/10 p-6">
           <p className="text-xs uppercase tracking-[0.2em] text-black/30 mb-5">Preview</p>
           <div className="flex justify-center items-center" style={{ minHeight: prevH }}>
-            <canvas
-              ref={canvasRef}
-              style={{ width: prevW, height: prevH, display: "block" }}
-            />
+            <canvas ref={canvasRef} style={{ width: prevW, height: prevH, display: "block" }} />
           </div>
-          <p className="text-[11px] text-black/25 mt-4">
-            {fmt.w} × {fmt.h}px — exports at full resolution
-          </p>
+          <p className="text-[11px] text-black/25 mt-4">{fmt.w} × {fmt.h}px — exports at full resolution</p>
         </div>
 
         {/* Caption + download */}
         <div className="space-y-4">
           <div className="bg-white border border-black/10 p-6">
-            <label className="block text-xs text-black/40 uppercase tracking-wider mb-3">
-              Caption / Headline
-            </label>
+            <label className="block text-xs text-black/40 uppercase tracking-wider mb-3">Caption / Headline</label>
             <textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
