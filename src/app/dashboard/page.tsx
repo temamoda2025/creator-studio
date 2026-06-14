@@ -7,6 +7,7 @@ import ContentGenerator from "@/components/ContentGenerator";
 import ContentResearch from "@/components/ContentResearch";
 import CaptionHistory from "@/components/CaptionHistory";
 import ReelScriptGenerator from "@/components/ReelScriptGenerator";
+import DesignCreator from "@/components/DesignCreator";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -179,13 +180,14 @@ function ErrorBanner({ message }: { message: string }) {
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "research" | "content-generator" | "reel-scripts" | "history";
+type Tab = "overview" | "research" | "content-generator" | "reel-scripts" | "design-creator" | "history";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "research", label: "Content Research" },
   { id: "content-generator", label: "Content Generator" },
   { id: "reel-scripts", label: "Reel Scripts" },
+  { id: "design-creator", label: "Design Creator" },
   { id: "history", label: "History" },
 ];
 
@@ -478,6 +480,9 @@ export default function DashboardPage() {
 
           {/* ── Reel Scripts ── */}
           {tab === "reel-scripts" && <ReelScriptGenerator />}
+
+          {/* ── Design Creator ── */}
+          {tab === "design-creator" && <DesignCreator />}
 
           {/* ── History ── */}
           {tab === "history" && <CaptionHistory />}
