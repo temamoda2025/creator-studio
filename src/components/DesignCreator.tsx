@@ -19,6 +19,8 @@ const FORMATS: Format[] = [
   { id: "tiktok",       label: "TikTok Video Cover (9:16)",      w: 1080, h: 1920 },
   { id: "linkedin",     label: "LinkedIn Post (1.91:1)",         w: 1200, h:  628 },
   { id: "facebook",     label: "Facebook Post (1.91:1)",         w: 1200, h:  628 },
+  { id: "yt-thumbnail", label: "YouTube Thumbnail (16:9)",       w: 1280, h:  720 },
+  { id: "yt-community", label: "YouTube Community Post (1:1)",   w: 1080, h: 1080 },
 ];
 
 // ─── Background colour presets ────────────────────────────────────────────────

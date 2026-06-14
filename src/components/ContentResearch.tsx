@@ -267,7 +267,7 @@ export default function ContentResearch({
               <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
                 Platform
               </label>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 {PLATFORM_OPTIONS.map(({ id, label }) => (
                   <button
                     key={id}
