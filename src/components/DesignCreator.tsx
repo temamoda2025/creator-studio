@@ -87,18 +87,16 @@ const FONT_CATEGORIES = [
   {
     label: "Casual",
     fonts: [
-      { family: "Poppins",    label: "Poppins"    },
-      { family: "Quicksand",  label: "Quicksand"  },
-      { family: "Pacifico",   label: "Pacifico"   },
+      { family: "Poppins",   label: "Poppins"   },
+      { family: "Quicksand", label: "Quicksand" },
+      { family: "Pacifico",  label: "Pacifico"  },
     ],
   },
 ] as const;
 
 type FontFamily = (typeof FONT_CATEGORIES)[number]["fonts"][number]["family"];
-
 const DEFAULT_FONT: FontFamily = "Inter";
 
-// Single request for all 15 fonts, sorted alphabetically as Google recommends
 const GOOGLE_FONTS_HREF =
   "https://fonts.googleapis.com/css2?" +
   "family=Anton&" +
@@ -120,8 +118,6 @@ const GOOGLE_FONTS_HREF =
 
 // ─── Canvas helpers ───────────────────────────────────────────────────────────
 
-// Module-level mutable: set once at the top of each draw() call, safe because
-// canvas rendering is synchronous and single-threaded.
 const FALLBACK = 'system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
 let _fontStack = FALLBACK;
 
@@ -185,8 +181,7 @@ function hex2rgba(hex: string, a: number): string {
 // ─── Template draw functions ──────────────────────────────────────────────────
 
 function drawBoldHeadline(
-  ctx: CanvasRenderingContext2D,
-  W: number, H: number,
+  ctx: CanvasRenderingContext2D, W: number, H: number,
   textColor: string, brandName: string, caption: string
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.08);
@@ -208,12 +203,10 @@ function drawBoldHeadline(
 }
 
 function drawMinimalQuote(
-  ctx: CanvasRenderingContext2D,
-  W: number, H: number,
+  ctx: CanvasRenderingContext2D, W: number, H: number,
   textColor: string, handle: string, caption: string
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.1);
-
   const quoteSize = Math.round(W * 0.18);
   setFont(ctx, quoteSize, 300, "0px");
   ctx.fillStyle = hex2rgba(textColor, 0.1);
@@ -221,9 +214,7 @@ function drawMinimalQuote(
   ctx.textBaseline = "top";
   ctx.fillText("“", PAD * 0.5, -PAD * 0.25);
 
-  const { fontSize, lines } = fitText(
-    ctx, caption, W - PAD * 2.5, H - PAD * 3.5, 68, 20, 300, "0.5px", 1.6
-  );
+  const { fontSize, lines } = fitText(ctx, caption, W - PAD * 2.5, H - PAD * 3.5, 68, 20, 300, "0.5px", 1.6);
   setFont(ctx, fontSize, 300, "0.5px");
   const lh = fontSize * 1.6;
   const startY = (H - lines.length * lh) / 2;
@@ -241,8 +232,7 @@ function drawMinimalQuote(
 }
 
 function drawSplitLayout(
-  ctx: CanvasRenderingContext2D,
-  W: number, H: number,
+  ctx: CanvasRenderingContext2D, W: number, H: number,
   textColor: string, brandName: string, handle: string, caption: string
 ) {
   const isLandscape = W > H;
@@ -252,27 +242,21 @@ function drawSplitLayout(
     const splitX = Math.round(W * 0.38);
     ctx.strokeStyle = hex2rgba(textColor, 0.2);
     ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(splitX, PAD);
-    ctx.lineTo(splitX, H - PAD);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(splitX, PAD); ctx.lineTo(splitX, H - PAD); ctx.stroke();
 
-    const brandFontSize = Math.max(14, Math.round(H * 0.12));
-    setFont(ctx, brandFontSize, 700, "-1px");
+    setFont(ctx, Math.max(14, Math.round(H * 0.12)), 700, "-1px");
     ctx.fillStyle = textColor;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(brandName.toUpperCase(), splitX / 2, H / 2 - Math.round(H * 0.07));
 
-    const handleFontSize = Math.max(10, Math.round(H * 0.05));
-    setFont(ctx, handleFontSize, 300, "4px");
+    setFont(ctx, Math.max(10, Math.round(H * 0.05)), 300, "4px");
     ctx.fillStyle = hex2rgba(textColor, 0.4);
     ctx.textBaseline = "middle";
     ctx.fillText(handle.toUpperCase(), splitX / 2, H / 2 + Math.round(H * 0.06));
 
     const cX = splitX + PAD;
-    const cW = W - splitX - PAD * 1.5;
-    const { fontSize, lines } = fitText(ctx, caption, cW, H - PAD * 2, 64, 18, 500, "-0.5px", 1.3);
+    const { fontSize, lines } = fitText(ctx, caption, W - splitX - PAD * 1.5, H - PAD * 2, 64, 18, 500, "-0.5px", 1.3);
     setFont(ctx, fontSize, 500, "-0.5px");
     const lh = fontSize * 1.3;
     const startY = (H - lines.length * lh) / 2;
@@ -284,20 +268,15 @@ function drawSplitLayout(
     const splitY = Math.round(H * 0.34);
     ctx.strokeStyle = hex2rgba(textColor, 0.2);
     ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(PAD, splitY);
-    ctx.lineTo(W - PAD, splitY);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD, splitY); ctx.lineTo(W - PAD, splitY); ctx.stroke();
 
-    const brandFontSize = Math.max(14, Math.round(W * 0.09));
-    setFont(ctx, brandFontSize, 700, "-1px");
+    setFont(ctx, Math.max(14, Math.round(W * 0.09)), 700, "-1px");
     ctx.fillStyle = textColor;
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(brandName.toUpperCase(), PAD, splitY * 0.38);
 
-    const handleFontSize = Math.max(10, Math.round(W * 0.038));
-    setFont(ctx, handleFontSize, 300, "4px");
+    setFont(ctx, Math.max(10, Math.round(W * 0.038)), 300, "4px");
     ctx.fillStyle = hex2rgba(textColor, 0.4);
     ctx.textBaseline = "middle";
     ctx.fillText(handle.toUpperCase(), PAD, splitY * 0.65);
@@ -316,29 +295,24 @@ function drawSplitLayout(
 }
 
 function drawFullBleed(
-  ctx: CanvasRenderingContext2D,
-  W: number, H: number,
+  ctx: CanvasRenderingContext2D, W: number, H: number,
   textColor: string, brandName: string, handle: string, caption: string
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.07);
   const bandH = Math.round(H * 0.48);
-
   const grad = ctx.createLinearGradient(0, H - bandH * 1.6, 0, H);
   grad.addColorStop(0, "rgba(0,0,0,0)");
   grad.addColorStop(1, "rgba(0,0,0,0.8)");
   ctx.fillStyle = grad;
   ctx.fillRect(0, H - bandH * 1.6, W, bandH * 1.6);
 
-  const brandSize = Math.max(12, Math.round(W * 0.028));
-  setFont(ctx, brandSize, 300, "6px");
+  setFont(ctx, Math.max(12, Math.round(W * 0.028)), 300, "6px");
   ctx.fillStyle = hex2rgba(textColor, 0.7);
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.fillText(brandName.toUpperCase(), PAD, PAD);
 
-  const { fontSize, lines } = fitText(
-    ctx, caption, W - PAD * 2, bandH * 0.72, 80, 20, 600, "-0.5px", 1.25
-  );
+  const { fontSize, lines } = fitText(ctx, caption, W - PAD * 2, bandH * 0.72, 80, 20, 600, "-0.5px", 1.25);
   setFont(ctx, fontSize, 600, "-0.5px");
   const lh = fontSize * 1.25;
   const startY = H - PAD - lines.length * lh;
@@ -347,8 +321,7 @@ function drawFullBleed(
   ctx.textBaseline = "top";
   lines.forEach((l, i) => ctx.fillText(l, PAD, startY + i * lh));
 
-  const handleSize = Math.max(10, Math.round(W * 0.02));
-  setFont(ctx, handleSize, 300, "4px");
+  setFont(ctx, Math.max(10, Math.round(W * 0.02)), 300, "4px");
   ctx.fillStyle = "rgba(255,255,255,0.45)";
   ctx.textAlign = "right";
   ctx.textBaseline = "bottom";
@@ -356,8 +329,7 @@ function drawFullBleed(
 }
 
 function drawTextOnly(
-  ctx: CanvasRenderingContext2D,
-  W: number, H: number,
+  ctx: CanvasRenderingContext2D, W: number, H: number,
   textColor: string, caption: string
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.1);
@@ -372,8 +344,7 @@ function drawTextOnly(
 }
 
 function drawBrandedFrame(
-  ctx: CanvasRenderingContext2D,
-  W: number, H: number,
+  ctx: CanvasRenderingContext2D, W: number, H: number,
   textColor: string, brandName: string, handle: string, caption: string
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.07);
@@ -383,7 +354,6 @@ function drawBrandedFrame(
   ctx.strokeStyle = hex2rgba(textColor, 0.22);
   ctx.lineWidth = 1.5;
   ctx.strokeRect(PAD, PAD, W - PAD * 2, H - PAD * 2);
-
   ctx.strokeStyle = hex2rgba(textColor, 0.75);
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(PAD, PAD + cornerLen); ctx.lineTo(PAD, PAD); ctx.lineTo(PAD + cornerLen, PAD); ctx.stroke();
@@ -391,8 +361,7 @@ function drawBrandedFrame(
   ctx.beginPath(); ctx.moveTo(PAD, H - PAD - cornerLen); ctx.lineTo(PAD, H - PAD); ctx.lineTo(PAD + cornerLen, H - PAD); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(W - PAD - cornerLen, H - PAD); ctx.lineTo(W - PAD, H - PAD); ctx.lineTo(W - PAD, H - PAD - cornerLen); ctx.stroke();
 
-  const brandSize = Math.max(12, Math.round(W * 0.025));
-  setFont(ctx, brandSize, 300, "6px");
+  setFont(ctx, Math.max(12, Math.round(W * 0.025)), 300, "6px");
   ctx.fillStyle = hex2rgba(textColor, 0.5);
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
@@ -411,8 +380,7 @@ function drawBrandedFrame(
   ctx.textBaseline = "top";
   lines.forEach((l, i) => ctx.fillText(l, inX, startY + i * lh));
 
-  const handleSize = Math.max(10, Math.round(W * 0.022));
-  setFont(ctx, handleSize, 300, "4px");
+  setFont(ctx, Math.max(10, Math.round(W * 0.022)), 300, "4px");
   ctx.fillStyle = hex2rgba(textColor, 0.35);
   ctx.textAlign = "right";
   ctx.textBaseline = "bottom";
@@ -428,6 +396,8 @@ interface DrawOptions {
   logo: HTMLImageElement | null;
   logoPosition: "top-left" | "top-right";
   fontFamily: string;
+  shadowColor: string;
+  shadowEnabled: boolean;
 }
 
 function draw(
@@ -437,12 +407,13 @@ function draw(
   brandName: string, handle: string, caption: string,
   opts: DrawOptions
 ) {
-  const { template, bgImage, overlayOpacity, logo, logoPosition, fontFamily } = opts;
+  const { template, bgImage, overlayOpacity, logo, logoPosition,
+          fontFamily, shadowColor, shadowEnabled } = opts;
   const PAD = Math.round(Math.min(W, H) * 0.07);
 
-  // Set font stack once for the entire draw call
   _fontStack = `"${fontFamily}", ${FALLBACK}`;
 
+  // Background
   ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, W, H);
 
@@ -457,6 +428,15 @@ function draw(
     }
   }
 
+  // Text shadow applied globally for all template text
+  if (shadowEnabled) {
+    const blur = Math.round(Math.min(W, H) * 0.014);
+    ctx.shadowColor = shadowColor;
+    ctx.shadowBlur = blur;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = Math.round(blur * 0.35);
+  }
+
   switch (template) {
     case "bold-headline":  drawBoldHeadline(ctx, W, H, textColor, brandName, caption); break;
     case "minimal-quote":  drawMinimalQuote(ctx, W, H, textColor, handle, caption); break;
@@ -465,6 +445,12 @@ function draw(
     case "text-only":      drawTextOnly(ctx, W, H, textColor, caption); break;
     case "branded-frame":  drawBrandedFrame(ctx, W, H, textColor, brandName, handle, caption); break;
   }
+
+  // Always reset shadow so it doesn't bleed into logo / next draw
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
 
   if (logo) {
     const maxLogoH = Math.round(H * 0.07);
@@ -511,6 +497,7 @@ function TemplateThumbnail({
         "Preview headline text for layout", {
           template: id, bgImage: null, overlayOpacity: 0,
           logo: null, logoPosition: "top-right", fontFamily,
+          shadowColor: "#000000", shadowEnabled: false,
         });
     };
     document.fonts.load(`500 1em "${fontFamily}"`).then(doRender, doRender);
@@ -534,20 +521,54 @@ function TemplateThumbnail({
   );
 }
 
+// ─── Colour swatch picker ─────────────────────────────────────────────────────
+
+function ColourPicker({
+  label, value, onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="flex items-center gap-2.5 w-fit cursor-pointer group">
+      <span
+        className="w-7 h-7 rounded-full border-2 border-black/10 group-hover:border-black/30 transition-colors shrink-0 relative overflow-hidden"
+        style={{ background: value }}
+      >
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+        />
+      </span>
+      <span className="text-xs text-black/40">{label}</span>
+      <span className="text-[11px] text-black/30 font-mono">{value.toUpperCase()}</span>
+    </label>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
-const MAX_PREVIEW = 500;
+const MAX_PREVIEW  = 500;
+const MAX_SLIDES   = 10;
+const BLANK_CAPTION = "Paste your ADORAR™ generated caption here — or write a headline for your design.";
 
 export default function DesignCreator() {
   const { activeBrand } = useBrands();
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef   = useRef<HTMLInputElement>(null);
+  const captionRef   = useRef(BLANK_CAPTION);
 
+  // Core design state
   const [formatId,       setFormatId]       = useState(FORMATS[0].id);
-  const [caption,        setCaption]        = useState("Paste your ADORAR™ generated caption here — or write a headline for your design.");
+  const [caption,        setCaption]        = useState(BLANK_CAPTION);
   const [bgColor,        setBgColor]        = useState(BG_PRESETS[0].hex);
-  const [textColor,      setTextColor]      = useState<"#ffffff" | "#000000">("#ffffff");
+  const [textColor,      setTextColor]      = useState("#ffffff");
+  const [shadowColor,    setShadowColor]    = useState("#000000");
+  const [shadowEnabled,  setShadowEnabled]  = useState(false);
   const [templateId,     setTemplateId]     = useState<TemplateId>("bold-headline");
   const [fontFamily,     setFontFamily]     = useState<string>(DEFAULT_FONT);
   const [fontsReady,     setFontsReady]     = useState(false);
@@ -561,29 +582,44 @@ export default function DesignCreator() {
   const [bgImg,          setBgImg]          = useState<HTMLImageElement | null>(null);
   const [bgImgThumb,     setBgImgThumb]     = useState<string | null>(null);
   const [overlayOpacity, setOverlayOpacity] = useState(0.5);
+  const [bgMode,         setBgMode]         = useState<"upload" | "ai">("upload");
+  const [aiPrompt,       setAiPrompt]       = useState("");
+  const [aiLoading,      setAiLoading]      = useState(false);
+  const [aiError,        setAiError]        = useState<string | null>(null);
 
-  // AI image generation
-  const [bgMode,    setBgMode]    = useState<"upload" | "ai">("upload");
-  const [aiPrompt,  setAiPrompt]  = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError,   setAiError]   = useState<string | null>(null);
+  // Carousel slides
+  const [slides,         setSlides]         = useState<string[]>([BLANK_CAPTION]);
+  const [activeSlide,    setActiveSlide]    = useState(0);
+  const [downloading,    setDownloading]    = useState(false);
 
-  // ── Derived ──────────────────────────────────────────────────────────────────
-  const fmt      = FORMATS.find((f) => f.id === formatId)!;
-  const scale    = Math.min(MAX_PREVIEW / fmt.w, MAX_PREVIEW / fmt.h);
-  const prevW    = Math.round(fmt.w * scale);
-  const prevH    = Math.round(fmt.h * scale);
-  const brandName = activeBrand?.name ?? "Your Brand";
-  // Strip any leading @ the user typed in Brand Blueprint to avoid @@
-  const rawHandle = activeBrand?.handle
+  // ── Derived ─────────────────────────────────────────────────────────────────
+  const isCarousel   = formatId === "ig-carousel";
+  const fmt          = FORMATS.find((f) => f.id === formatId)!;
+  const scale        = Math.min(MAX_PREVIEW / fmt.w, MAX_PREVIEW / fmt.h);
+  const prevW        = Math.round(fmt.w * scale);
+  const prevH        = Math.round(fmt.h * scale);
+  const brandName    = activeBrand?.name ?? "Your Brand";
+  const rawHandle    = activeBrand?.handle
     ? activeBrand.handle.replace(/^@+/, "")
     : brandName.toLowerCase().replace(/\s+/g, "");
-  const handle = `@${rawHandle}`;
+  const handle       = `@${rawHandle}`;
+  const activeCaption = isCarousel ? (slides[activeSlide] ?? "") : caption;
 
-  // ── Load all Google Fonts once on mount ──────────────────────────────────────
+  // Keep captionRef in sync for the format-switch initialiser below
+  useEffect(() => { captionRef.current = caption; }, [caption]);
+
+  // When switching TO carousel, seed slide 1 with whatever is in the caption box
+  useEffect(() => {
+    if (isCarousel) {
+      setSlides([captionRef.current]);
+      setActiveSlide(0);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCarousel]);
+
+  // ── Google Fonts ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (document.getElementById("gf-design-creator")) {
-      // Already injected (e.g. hot-reload) — still wait for fonts
       document.fonts.ready.then(() => setFontsReady(true));
       return;
     }
@@ -595,15 +631,13 @@ export default function DesignCreator() {
     document.head.appendChild(link);
   }, []);
 
-  // ── Restore font per brand from localStorage ─────────────────────────────────
+  // ── Per-brand persistence ────────────────────────────────────────────────────
   useEffect(() => {
     if (!activeBrand) return;
     const saved = localStorage.getItem(`font-${activeBrand.id}`);
-    if (saved) setFontFamily(saved);
-    else setFontFamily(DEFAULT_FONT);
+    setFontFamily(saved ?? DEFAULT_FONT);
   }, [activeBrand]);
 
-  // ── Restore logo per brand from localStorage ─────────────────────────────────
   useEffect(() => {
     if (!activeBrand) { setLogoImg(null); setLogoDataUrl(null); return; }
     const saved = localStorage.getItem(`logo-${activeBrand.id}`);
@@ -617,7 +651,7 @@ export default function DesignCreator() {
     }
   }, [activeBrand]);
 
-  // ── Event handlers ───────────────────────────────────────────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────────────────
   const pickFont = (family: string) => {
     setFontFamily(family);
     if (activeBrand) {
@@ -633,8 +667,7 @@ export default function DesignCreator() {
       const dataUrl = ev.target?.result as string;
       const img = new Image();
       img.onload = () => {
-        setLogoImg(img);
-        setLogoDataUrl(dataUrl);
+        setLogoImg(img); setLogoDataUrl(dataUrl);
         if (activeBrand) {
           try { localStorage.setItem(`logo-${activeBrand.id}`, dataUrl); } catch { /* quota */ }
         }
@@ -646,8 +679,7 @@ export default function DesignCreator() {
   };
 
   const removeLogo = () => {
-    setLogoImg(null);
-    setLogoDataUrl(null);
+    setLogoImg(null); setLogoDataUrl(null);
     if (activeBrand) localStorage.removeItem(`logo-${activeBrand.id}`);
   };
 
@@ -669,8 +701,7 @@ export default function DesignCreator() {
 
   const handleAiGenerate = async () => {
     if (!aiPrompt.trim() || aiLoading) return;
-    setAiLoading(true);
-    setAiError(null);
+    setAiLoading(true); setAiError(null);
     try {
       const res  = await fetch("/api/image/generate", {
         method: "POST",
@@ -689,34 +720,82 @@ export default function DesignCreator() {
     }
   };
 
+  // Carousel slide management
+  const addSlide = () => {
+    if (slides.length >= MAX_SLIDES) return;
+    setSlides(prev => [...prev, ""]);
+    setActiveSlide(slides.length); // new slide index
+  };
+
+  const removeSlide = (i: number) => {
+    if (slides.length <= 1) return;
+    setSlides(prev => prev.filter((_, idx) => idx !== i));
+    setActiveSlide(prev => Math.min(prev, slides.length - 2));
+  };
+
+  const updateSlide = (i: number, text: string) => {
+    setSlides(prev => prev.map((s, idx) => idx === i ? text : s));
+  };
+
   // ── Canvas rendering ─────────────────────────────────────────────────────────
+  const drawOpts = useCallback((): DrawOptions => ({
+    template: templateId, bgImage: bgImg, overlayOpacity,
+    logo: logoImg, logoPosition, fontFamily,
+    shadowColor, shadowEnabled,
+  }), [templateId, bgImg, overlayOpacity, logoImg, logoPosition, fontFamily, shadowColor, shadowEnabled]);
+
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const opts = drawOpts();
     const doRender = () => {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       canvas.width  = fmt.w;
       canvas.height = fmt.h;
-      draw(ctx, fmt.w, fmt.h, bgColor, textColor, brandName, handle, caption, {
-        template: templateId, bgImage: bgImg, overlayOpacity,
-        logo: logoImg, logoPosition, fontFamily,
-      });
+      draw(ctx, fmt.w, fmt.h, bgColor, textColor, brandName, handle, activeCaption, opts);
     };
-    // Wait for the selected font before drawing; fall back if unavailable
     document.fonts.load(`500 1em "${fontFamily}"`).then(doRender, doRender);
-  }, [fmt, bgColor, textColor, brandName, handle, caption, templateId,
-      bgImg, overlayOpacity, logoImg, logoPosition, fontFamily, fontsReady]);
+  }, [fmt, bgColor, textColor, brandName, handle, activeCaption,
+      fontFamily, fontsReady, drawOpts]);
 
   useEffect(() => { redraw(); }, [redraw]);
 
+  // ── Downloads ────────────────────────────────────────────────────────────────
   const downloadPng = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const a = document.createElement("a");
-    a.download = `${brandName.toLowerCase().replace(/\s+/g, "-")}-${formatId}.png`;
+    const slug = brandName.toLowerCase().replace(/\s+/g, "-");
+    a.download = isCarousel
+      ? `${slug}-carousel-${String(activeSlide + 1).padStart(2, "0")}.png`
+      : `${slug}-${formatId}.png`;
     a.href = canvas.toDataURL("image/png");
     a.click();
+  };
+
+  const downloadAllSlides = async () => {
+    if (downloading) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    setDownloading(true);
+    await document.fonts.load(`500 1em "${fontFamily}"`).catch(() => {});
+    const slug = brandName.toLowerCase().replace(/\s+/g, "-");
+    const opts = drawOpts();
+    for (let i = 0; i < slides.length; i++) {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) break;
+      canvas.width  = fmt.w;
+      canvas.height = fmt.h;
+      draw(ctx, fmt.w, fmt.h, bgColor, textColor, brandName, handle, slides[i], opts);
+      const a = document.createElement("a");
+      a.download = `${slug}-carousel-${String(i + 1).padStart(2, "0")}.png`;
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+      if (i < slides.length - 1) await new Promise(r => setTimeout(r, 200));
+    }
+    setDownloading(false);
+    redraw(); // restore current slide view
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -734,7 +813,7 @@ export default function DesignCreator() {
           )}
         </div>
         <p className="text-sm text-black/40 mb-8 leading-relaxed">
-          Create branded social graphics. Choose a template and format, paste your caption, pick a colour and font — then download at full resolution.
+          Create branded social graphics. Choose a template and format, paste your caption, pick colours and a font — then download at full resolution.
         </p>
 
         <div className="space-y-6 max-w-2xl">
@@ -782,22 +861,30 @@ export default function DesignCreator() {
             </div>
           </div>
 
-          {/* Text colour */}
-          <div>
-            <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">Text Colour</label>
-            <div className="flex gap-2">
-              {(["#ffffff", "#000000"] as const).map((c) => (
+          {/* Text colour + shadow */}
+          <div className="flex flex-wrap gap-6 items-start">
+            <div>
+              <label className="block text-xs text-black/40 uppercase tracking-wider mb-2.5">Text Colour</label>
+              <ColourPicker label="text" value={textColor} onChange={setTextColor} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-2.5">
+                <label className="text-xs text-black/40 uppercase tracking-wider">Text Shadow</label>
                 <button
-                  key={c}
-                  onClick={() => setTextColor(c)}
-                  className={`flex items-center gap-2 text-xs px-4 py-2 rounded-full border transition-colors ${
-                    textColor === c ? "border-black" : "border-black/15 hover:border-black/40"
+                  onClick={() => setShadowEnabled(v => !v)}
+                  className={`text-[11px] px-2.5 py-0.5 rounded-full border transition-colors ${
+                    shadowEnabled
+                      ? "border-black bg-black text-white"
+                      : "border-black/20 text-black/40 hover:border-black/40"
                   }`}
                 >
-                  <span className="w-3 h-3 rounded-full border border-black/15 shrink-0" style={{ background: c }} />
-                  <span className="text-black/60">{c === "#ffffff" ? "White" : "Black"}</span>
+                  {shadowEnabled ? "On" : "Off"}
                 </button>
-              ))}
+              </div>
+              {shadowEnabled
+                ? <ColourPicker label="shadow" value={shadowColor} onChange={setShadowColor} />
+                : <p className="text-[11px] text-black/25">Adds a soft drop shadow behind text for readability.</p>
+              }
             </div>
           </div>
 
@@ -874,7 +961,6 @@ export default function DesignCreator() {
           {/* Background image */}
           <div>
             <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">Background Image</label>
-
             <div className="flex gap-2 mb-3">
               {(["upload", "ai"] as const).map((mode) => (
                 <button
@@ -990,19 +1076,97 @@ export default function DesignCreator() {
           <p className="text-[11px] text-black/25 mt-4">{fmt.w} × {fmt.h}px — exports at full resolution</p>
         </div>
 
-        {/* Caption + download */}
+        {/* Caption / Slide manager */}
         <div className="space-y-4">
-          <div className="bg-white border border-black/10 p-6">
-            <label className="block text-xs text-black/40 uppercase tracking-wider mb-3">Caption / Headline</label>
-            <textarea
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              rows={11}
-              placeholder="Paste your ADORAR™ caption or write a headline…"
-              className="w-full border border-black/15 px-4 py-3 text-sm placeholder:text-black/25 focus:outline-none focus:border-black/40 transition-colors rounded-none bg-white resize-none leading-relaxed"
-            />
-            <p className="text-[11px] text-black/25 mt-1.5">{caption.length} chars</p>
-          </div>
+
+          {isCarousel ? (
+            /* ── Carousel slide manager ── */
+            <div className="bg-white border border-black/10 p-6">
+              {/* Header row */}
+              <div className="flex items-center justify-between mb-4">
+                <label className="text-xs text-black/40 uppercase tracking-wider">Slides</label>
+                <span className="text-xs text-black/35 tabular-nums">
+                  {activeSlide + 1} / {slides.length}
+                </span>
+              </div>
+
+              {/* Arrows + textarea */}
+              <div className="flex gap-2 items-start">
+                <button
+                  onClick={() => setActiveSlide(i => Math.max(0, i - 1))}
+                  disabled={activeSlide === 0}
+                  aria-label="Previous slide"
+                  className="mt-3 px-1 text-black/30 hover:text-black/70 disabled:opacity-20 transition-colors text-xl leading-none select-none"
+                >
+                  ←
+                </button>
+                <textarea
+                  value={slides[activeSlide] ?? ""}
+                  onChange={(e) => updateSlide(activeSlide, e.target.value)}
+                  rows={9}
+                  placeholder="Slide text…"
+                  className="flex-1 border border-black/15 px-4 py-3 text-sm placeholder:text-black/25 focus:outline-none focus:border-black/40 transition-colors rounded-none bg-white resize-none leading-relaxed"
+                />
+                <button
+                  onClick={() => setActiveSlide(i => Math.min(slides.length - 1, i + 1))}
+                  disabled={activeSlide === slides.length - 1}
+                  aria-label="Next slide"
+                  className="mt-3 px-1 text-black/30 hover:text-black/70 disabled:opacity-20 transition-colors text-xl leading-none select-none"
+                >
+                  →
+                </button>
+              </div>
+
+              {/* Dot indicators */}
+              <div className="flex gap-1.5 justify-center mt-3">
+                {slides.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveSlide(i)}
+                    aria-label={`Go to slide ${i + 1}`}
+                    className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                      i === activeSlide ? "bg-black" : "bg-black/20 hover:bg-black/40"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Add / delete */}
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-black/8">
+                <button
+                  onClick={() => removeSlide(activeSlide)}
+                  disabled={slides.length <= 1}
+                  className="text-xs text-black/30 hover:text-black/60 disabled:opacity-30 transition-colors"
+                >
+                  Delete slide
+                </button>
+                <span className="text-[10px] text-black/20">{(slides[activeSlide] ?? "").length} chars</span>
+                <button
+                  onClick={addSlide}
+                  disabled={slides.length >= MAX_SLIDES}
+                  className="text-xs text-black/50 hover:text-black disabled:opacity-30 transition-colors font-medium"
+                >
+                  + Add slide
+                </button>
+              </div>
+              {slides.length >= MAX_SLIDES && (
+                <p className="text-[11px] text-black/25 mt-2">Maximum {MAX_SLIDES} slides reached.</p>
+              )}
+            </div>
+          ) : (
+            /* ── Single caption editor ── */
+            <div className="bg-white border border-black/10 p-6">
+              <label className="block text-xs text-black/40 uppercase tracking-wider mb-3">Caption / Headline</label>
+              <textarea
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                rows={11}
+                placeholder="Paste your ADORAR™ caption or write a headline…"
+                className="w-full border border-black/15 px-4 py-3 text-sm placeholder:text-black/25 focus:outline-none focus:border-black/40 transition-colors rounded-none bg-white resize-none leading-relaxed"
+              />
+              <p className="text-[11px] text-black/25 mt-1.5">{caption.length} chars</p>
+            </div>
+          )}
 
           {!activeBrand && (
             <div className="bg-zinc-50 border border-black/10 p-4">
@@ -1012,16 +1176,39 @@ export default function DesignCreator() {
             </div>
           )}
 
-          <button
-            onClick={downloadPng}
-            className="w-full bg-black text-white text-sm px-8 py-4 rounded-full hover:bg-black/80 transition-colors font-medium"
-          >
-            Download as PNG ↓
-          </button>
-
-          <p className="text-[11px] text-black/25 text-center">
-            {fmt.w} × {fmt.h}px · ready to upload
-          </p>
+          {/* Download buttons */}
+          {isCarousel ? (
+            <>
+              <button
+                onClick={downloadAllSlides}
+                disabled={downloading}
+                className="w-full bg-black text-white text-sm px-8 py-4 rounded-full hover:bg-black/80 transition-colors font-medium disabled:opacity-50"
+              >
+                {downloading ? "Downloading…" : `Download All ${slides.length} Slides ↓`}
+              </button>
+              <button
+                onClick={downloadPng}
+                className="w-full border border-black text-black text-sm px-8 py-3 rounded-full hover:bg-black/5 transition-colors"
+              >
+                Download Slide {activeSlide + 1} only ↓
+              </button>
+              <p className="text-[11px] text-black/25 text-center">
+                {slides.length} slides · {fmt.w}×{fmt.h}px each
+              </p>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={downloadPng}
+                className="w-full bg-black text-white text-sm px-8 py-4 rounded-full hover:bg-black/80 transition-colors font-medium"
+              >
+                Download as PNG ↓
+              </button>
+              <p className="text-[11px] text-black/25 text-center">
+                {fmt.w} × {fmt.h}px · ready to upload
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>
