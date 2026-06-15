@@ -29,7 +29,8 @@
       "WebFetch(domain:apify.com)",
       "Bash(vercel logs *)",
       "Bash(npx vercel *)",
-      "Bash(npx next *)"
+      "Bash(npx next *)",
+      "Skill(run)"
     ]
   }
 }

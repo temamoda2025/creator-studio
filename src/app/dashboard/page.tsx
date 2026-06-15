@@ -7,7 +7,7 @@ import ContentGenerator from "@/components/ContentGenerator";
 import ContentResearch from "@/components/ContentResearch";
 import CaptionHistory from "@/components/CaptionHistory";
 import ReelScriptGenerator from "@/components/ReelScriptGenerator";
-import DesignCreator from "@/components/DesignCreator";
+import DesignCreator, { type DesignSeed } from "@/components/DesignCreator";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -196,6 +196,7 @@ const TABS: { id: Tab; label: string }[] = [
 export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>("overview");
   const [inspireIdea, setInspireIdea] = useState("");
+  const [designSeed, setDesignSeed] = useState<DesignSeed | null>(null);
   const [igData, setIgData] = useState<IgStats | null>(null);
   const [igLoading, setIgLoading] = useState(true);
   const [igError, setIgError] = useState<string | null>(null);
@@ -475,14 +476,20 @@ export default function DashboardPage() {
 
           {/* ── Content Generator ── */}
           {tab === "content-generator" && (
-            <ContentGenerator initialIdea={inspireIdea} />
+            <ContentGenerator
+              initialIdea={inspireIdea}
+              onOpenInDesigner={(data) => {
+                setDesignSeed(data);
+                setTab("design-creator");
+              }}
+            />
           )}
 
           {/* ── Reel Scripts ── */}
           {tab === "reel-scripts" && <ReelScriptGenerator />}
 
           {/* ── Design Creator ── */}
-          {tab === "design-creator" && <DesignCreator />}
+          {tab === "design-creator" && <DesignCreator seed={designSeed} />}
 
           {/* ── History ── */}
           {tab === "history" && <CaptionHistory />}

@@ -81,8 +81,17 @@ You return structured JSON only. No markdown fences. No explanation. No preamble
 
 export async function POST(request: Request) {
   try {
-    const { brandName, targetAudience, contentIdea, format, brandVoice, brandPositioning } =
-      await request.json();
+    const {
+      brandName,
+      targetAudience,
+      contentIdea,
+      format,
+      tone,
+      brandVoice,
+      brandPositioning,
+      imageBase64,
+      imageMimeType,
+    } = await request.json();
 
     if (!brandName || !contentIdea || !format) {
       return Response.json(
@@ -95,15 +104,27 @@ export async function POST(request: Request) {
       Reel: "short-form video (15–60 sec). The caption hooks in the first line, uses line breaks for rhythm, and drives a specific action. The hook doubles as the spoken opening line. Keep it punchy — people read while watching.",
       Carousel:
         "multi-slide educational or storytelling post. The caption sets up the payoff — it teases what they'll learn across the slides. The hook must create enough curiosity to make them swipe. Structure the caption to complement the visual journey.",
-      "Static Post":
-        "single image post. The caption carries more weight — it must do the visual storytelling job the image starts. Length can be longer. Lead with the hook, build the emotional story, end with conviction.",
+      "Single Post":
+        "single image post. The caption carries more weight — it must do the visual storytelling job the image starts. Lead with the hook, build the emotional story, end with conviction. The caption should feel like a natural extension of the visual.",
       Story:
         "ephemeral 24-hour format. Conversational, immediate, low-production-value works here. The caption (if shown) is brief and personal. Prioritise authenticity over polish. Create urgency — stories disappear.",
+    };
+
+    const toneGuidance: Record<string, string> = {
+      Inspirational: "Lift the reader. Speak to who they are becoming. Use aspirational language, transformation arcs, and belief-affirming statements. The tone is warm, elevated, and forward-looking.",
+      Educational: "Teach something genuinely useful. Be specific, clear, and generous with information. The tone is knowledgeable but never condescending — a trusted expert sharing what they know.",
+      Promotional: "Make the offer feel obvious and irresistible. Stack the value, remove friction, create urgency without desperation. The tone is confident, direct, and benefit-driven.",
+      "Behind the Scenes": "Pull back the curtain. Be real, unpolished, and human. Share the process, the decisions, the imperfections. The tone is intimate, documentary, and trust-building.",
+      Personal: "Speak from genuine personal experience. Use 'I' statements, specific moments, and vulnerable truths. The tone is diary-entry honest — this happened to me, here is what it taught me.",
     };
 
     const selectedFormatGuidance =
       formatGuidance[format] ||
       "social media post. Optimise for the platform and format best practices.";
+
+    const selectedToneGuidance = tone
+      ? `\n## Tone Directive\n**${tone}**: ${toneGuidance[tone] || ""}\n`
+      : "";
 
     const voiceSection =
       brandVoice?.toneDescription || brandVoice?.captionExample
@@ -114,22 +135,24 @@ export async function POST(request: Request) {
       ? `**Brand Positioning:** ${brandPositioning}\n`
       : "";
 
-    const userMessage = `Generate ADORAR™ content for this brand and idea:
+    const hasImage = !!imageBase64;
+
+    const userMessage = `Generate ADORAR™ content for this brand and idea.${hasImage ? " You have been provided with the actual image for this post — study it carefully. The caption must feel like it was written specifically for this exact visual. Reference what you see: the mood, the composition, the colours, the story the image tells. The visual and caption must feel inseparable." : ""}
 
 **Brand:** ${brandName}
 ${positioningLine}**Target Audience:** ${targetAudience || "Not specified — infer from brand context"}
 **Content Idea / Topic:** ${contentIdea}
 **Format:** ${format} — ${selectedFormatGuidance}
-${voiceSection}
+${selectedToneGuidance}${voiceSection}
 ## Your Task
 
-1. Run a full ADORAR™ analysis on this content idea — go deep on each layer. This is the strategic foundation that everything else is built on.
+1. Run a full ADORAR™ analysis on this content idea — go deep on each layer. This is the strategic foundation that everything else is built on.${hasImage ? " Let the image inform every layer of the analysis." : ""}
 
 2. Distil the core message and emotional message from the analysis.
 
 3. Provide specific visual art direction the creator can execute.
 
-4. Write the actual caption — ready to post, no editing needed. Calibrate the voice, tone, length, and structure to the brand and format. The caption must feel like it came from inside the brand, not from a generator.
+4. Write the actual caption — ready to post, no editing needed. Calibrate the voice, tone, length, and structure to the brand and format.${hasImage ? " The caption must feel like a natural, authentic response to the image — not generic copy that could accompany any photo." : ""} The caption must feel like it came from inside the brand, not from a generator.
 
 5. Explain the psychological mechanics — why each creative choice was made, which of your trained frameworks are at work, what the audience's psychological journey is through this piece.
 
@@ -140,6 +163,26 @@ ${voiceSection}
 Write the caption for ${brandName}. The brand voice should feel authentic to who ${brandName} is — not generic, not over-produced, not like a template. Every brand has a frequency; find theirs and write at it.
 
 Return ONLY the raw JSON object. No markdown. No code fences. No preamble.`;
+
+    const messageContent: Anthropic.ContentBlockParam[] = [];
+
+    if (imageBase64) {
+      const mediaType = (imageMimeType || "image/jpeg") as
+        | "image/jpeg"
+        | "image/png"
+        | "image/gif"
+        | "image/webp";
+      messageContent.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: mediaType,
+          data: imageBase64,
+        },
+      });
+    }
+
+    messageContent.push({ type: "text", text: userMessage });
 
     const response = await client.messages.create({
       model: "claude-opus-4-8",
@@ -155,7 +198,7 @@ Return ONLY the raw JSON object. No markdown. No code fences. No preamble.`;
       messages: [
         {
           role: "user",
-          content: userMessage,
+          content: messageContent,
         },
       ],
     });

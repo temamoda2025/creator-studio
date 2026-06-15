@@ -555,7 +555,12 @@ const MAX_PREVIEW  = 500;
 const MAX_SLIDES   = 10;
 const BLANK_CAPTION = "Paste your ADORAR™ generated caption here — or write a headline for your design.";
 
-export default function DesignCreator() {
+export interface DesignSeed {
+  imageDataUrl: string;
+  caption: string;
+}
+
+export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   const { activeBrand } = useBrands();
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -650,6 +655,21 @@ export default function DesignCreator() {
       setLogoDataUrl(null);
     }
   }, [activeBrand]);
+
+  // ── Seed from Content Generator ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!seed) return;
+    const img = new Image();
+    img.onload = () => {
+      setBgImg(img);
+      setBgImgThumb(seed.imageDataUrl);
+      setOverlayOpacity(0.45);
+    };
+    img.src = seed.imageDataUrl;
+    const firstLine = seed.caption.split("\n")[0]?.slice(0, 150) || seed.caption.slice(0, 150);
+    setCaption(firstLine);
+    setTemplateId("full-bleed");
+  }, [seed]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const pickFont = (family: string) => {

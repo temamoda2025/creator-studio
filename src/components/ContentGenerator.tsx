@@ -1,22 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useBrands } from "@/context/BrandsContext";
 
-const FORMATS = ["Reel", "Carousel", "Static Post", "Story"] as const;
+const FORMATS = ["Single Post", "Carousel", "Reel", "Story"] as const;
 type Format = (typeof FORMATS)[number];
 
-interface AdorarAnalysis {
-  attention: string;
-  desire: string;
-  outcome: string;
-  reasonToBelieve: string;
-  authenticity: string;
-  realYou: string;
-}
+const TONES = [
+  "Inspirational",
+  "Educational",
+  "Promotional",
+  "Behind the Scenes",
+  "Personal",
+] as const;
+type Tone = (typeof TONES)[number];
 
 interface ContentResult {
-  adorar: AdorarAnalysis;
+  adorar: {
+    attention: string;
+    desire: string;
+    outcome: string;
+    reasonToBelieve: string;
+    authenticity: string;
+    realYou: string;
+  };
   coreMessage: string;
   emotionalMessage: string;
   visualDirection: string;
@@ -25,157 +32,248 @@ interface ContentResult {
   cta: string;
 }
 
-const ADORAR_LABELS: { key: keyof AdorarAnalysis; label: string; letter: string }[] = [
-  { key: "attention", label: "Attention", letter: "A" },
-  { key: "desire", label: "Desire", letter: "D" },
-  { key: "outcome", label: "Outcome", letter: "O" },
-  { key: "reasonToBelieve", label: "Reason to Believe", letter: "R" },
-  { key: "authenticity", label: "Authenticity", letter: "A" },
-  { key: "realYou", label: "Real You", letter: "R" },
+const FORMAT_TO_IMAGE_ID: Record<Format, string> = {
+  "Single Post": "ig-post",
+  Carousel: "ig-carousel",
+  Reel: "ig-story",
+  Story: "ig-story",
+};
+
+const ADORAR_LABELS: {
+  key: keyof ContentResult["adorar"];
+  letter: string;
+  label: string;
+}[] = [
+  { key: "attention", letter: "A", label: "Attention" },
+  { key: "desire", letter: "D", label: "Desire" },
+  { key: "outcome", letter: "O", label: "Outcome" },
+  { key: "reasonToBelieve", letter: "R", label: "Reason to Believe" },
+  { key: "authenticity", letter: "A", label: "Authenticity" },
+  { key: "realYou", letter: "R", label: "Real You" },
 ];
 
-function Skeleton() {
-  return (
-    <div className="space-y-6 animate-pulse">
-      <div className="bg-white border border-black/10 p-6 space-y-3">
-        <div className="h-3 bg-black/8 rounded w-32" />
-        <div className="grid grid-cols-2 gap-3">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="space-y-2">
-              <div className="h-2.5 bg-black/8 rounded w-12" />
-              <div className="h-2 bg-black/6 rounded w-full" />
-              <div className="h-2 bg-black/6 rounded w-5/6" />
-            </div>
-          ))}
-        </div>
-      </div>
-      {[...Array(4)].map((_, i) => (
-        <div key={i} className="bg-white border border-black/10 p-6 space-y-2">
-          <div className="h-2.5 bg-black/8 rounded w-24" />
-          <div className="h-2 bg-black/6 rounded w-full" />
-          <div className="h-2 bg-black/6 rounded w-4/5" />
-          <div className="h-2 bg-black/6 rounded w-3/4" />
-        </div>
-      ))}
-    </div>
-  );
-}
+const FALLBACK_FONT =
+  'system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
 
-function ResultCard({
-  label,
-  children,
-  variant = "default",
-}: {
-  label: string;
-  children: React.ReactNode;
-  variant?: "default" | "accent" | "caption";
-}) {
-  const base = "border p-6";
-  const variants = {
-    default: `${base} bg-white border-black/10`,
-    accent: `${base} bg-black text-white border-black`,
-    caption: `${base} bg-zinc-50 border-black/15`,
-  };
+function drawDesignPreview(
+  canvas: HTMLCanvasElement,
+  img: HTMLImageElement,
+  captionText: string,
+  brandName: string,
+  fontFamily: string
+) {
+  const W = canvas.width;
+  const H = canvas.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
 
-  return (
-    <div className={variants[variant]}>
-      <p
-        className={`text-xs uppercase tracking-[0.2em] mb-3 ${
-          variant === "accent" ? "text-white/40" : "text-black/30"
-        }`}
-      >
-        {label}
-      </p>
-      {children}
-    </div>
-  );
+  const fontStack = `"${fontFamily}", ${FALLBACK_FONT}`;
+
+  // Cover-fill the image
+  ctx.clearRect(0, 0, W, H);
+  const scale = Math.max(W / img.naturalWidth, H / img.naturalHeight);
+  const sw = img.naturalWidth * scale;
+  const sh = img.naturalHeight * scale;
+  ctx.drawImage(img, (W - sw) / 2, (H - sh) / 2, sw, sh);
+
+  // Gradient overlay from bottom 55%
+  const grad = ctx.createLinearGradient(0, H * 0.38, 0, H);
+  grad.addColorStop(0, "rgba(0,0,0,0)");
+  grad.addColorStop(1, "rgba(0,0,0,0.84)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Extract first paragraph / hook (up to 3 lines)
+  const firstPara = captionText.split("\n")[0] || captionText;
+  const PAD = Math.round(W * 0.07);
+  const maxW = W - PAD * 2;
+  const fontSize = Math.round(W * 0.048);
+  ctx.font = `600 ${fontSize}px ${fontStack}`;
+
+  const words = firstPara.split(" ");
+  const lines: string[] = [];
+  let cur = "";
+  for (const word of words) {
+    const test = cur ? `${cur} ${word}` : word;
+    if (cur && ctx.measureText(test).width > maxW) {
+      lines.push(cur);
+      cur = word;
+      if (lines.length >= 3) break;
+    } else {
+      cur = test;
+    }
+  }
+  if (cur && lines.length < 3) lines.push(cur);
+
+  const lineH = fontSize * 1.38;
+  const brandFontSize = Math.round(W * 0.028);
+  const bottomReserve = PAD + brandFontSize + Math.round(W * 0.025);
+  let y = H - bottomReserve - lines.length * lineH;
+
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = "rgba(0,0,0,0.5)";
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetY = 2;
+  for (const line of lines) {
+    ctx.fillText(line, PAD, y + fontSize);
+    y += lineH;
+  }
+
+  // Brand name
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.font = `400 ${brandFontSize}px ${fontStack}`;
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.fillText(brandName, PAD, H - PAD);
 }
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
 
-  const copy = async () => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
     <button
-      onClick={copy}
+      onClick={async () => {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }}
       className="text-xs text-black/40 hover:text-black transition-colors border border-black/15 px-3 py-1.5 rounded-full hover:border-black/40"
     >
-      {copied ? "Copied" : "Copy caption"}
-    </button>
-  );
-}
-
-function CanvaButton({ text, canvaUrl, label }: { text: string; canvaUrl: string; label: string }) {
-  const [state, setState] = useState<"idle" | "done">("idle");
-
-  const open = async () => {
-    await navigator.clipboard.writeText(text).catch(() => {});
-    window.open(canvaUrl, "_blank", "noopener,noreferrer");
-    setState("done");
-    setTimeout(() => setState("idle"), 3000);
-  };
-
-  return (
-    <button
-      onClick={open}
-      className="text-xs text-black/40 hover:text-black transition-colors border border-black/15 px-3 py-1.5 rounded-full hover:border-black/40"
-    >
-      {state === "done" ? "Copied & opened ↗" : label}
+      {copied ? "Copied" : "Copy Caption"}
     </button>
   );
 }
 
 export default function ContentGenerator({
   initialIdea,
+  onOpenInDesigner,
 }: {
   initialIdea?: string;
+  onOpenInDesigner?: (data: { imageDataUrl: string; caption: string }) => void;
 }) {
   const { activeBrand } = useBrands();
-  const [brandName, setBrandName] = useState("");
-  const [targetAudience, setTargetAudience] = useState("");
-  const [contentIdea, setContentIdea] = useState("");
-  const [format, setFormat] = useState<Format>("Reel");
+
+  // Visual input
+  const [photoMode, setPhotoMode] = useState<"upload" | "ai">("upload");
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Instructions
+  const [topic, setTopic] = useState("");
+  const [format, setFormat] = useState<Format>("Single Post");
+  const [tone, setTone] = useState<Tone>("Inspirational");
+
+  // Generation
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ContentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (activeBrand) {
-      setBrandName(activeBrand.name);
-      setTargetAudience(activeBrand.targetAudience);
-    }
-  }, [activeBrand]);
+  // Design preview
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [previewImg, setPreviewImg] = useState<HTMLImageElement | null>(null);
+  const [fontFamily, setFontFamily] = useState("Inter");
 
   useEffect(() => {
     if (initialIdea) {
-      setContentIdea(initialIdea);
+      setTopic(initialIdea);
       setResult(null);
     }
   }, [initialIdea]);
 
-  const generate = async () => {
-    if (!brandName.trim() || !contentIdea.trim()) return;
+  useEffect(() => {
+    if (!activeBrand) return;
+    const saved = localStorage.getItem(`font-${activeBrand.id}`);
+    if (saved) setFontFamily(saved);
+  }, [activeBrand]);
 
+  useEffect(() => {
+    if (!imageDataUrl) { setPreviewImg(null); return; }
+    const img = new Image();
+    img.onload = () => setPreviewImg(img);
+    img.src = imageDataUrl;
+  }, [imageDataUrl]);
+
+  useEffect(() => {
+    if (!result || !previewImg || !previewCanvasRef.current) return;
+    const canvas = previewCanvasRef.current;
+    canvas.width = 1080;
+    canvas.height = 1080;
+    document.fonts.load(`600 1em "${fontFamily}"`).then(() => {
+      drawDesignPreview(
+        canvas,
+        previewImg,
+        result.caption,
+        activeBrand?.name ?? "Your Brand",
+        fontFamily
+      );
+    });
+  }, [result, previewImg, fontFamily, activeBrand]);
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setImageDataUrl(ev.target?.result as string);
+      setImageError(null);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const generateImage = async () => {
+    if (!aiPrompt.trim()) return;
+    setGeneratingImage(true);
+    setImageError(null);
+    try {
+      const res = await fetch("/api/image/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: aiPrompt,
+          formatId: FORMAT_TO_IMAGE_ID[format],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "Image generation failed");
+      setImageDataUrl(data.dataUrl);
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : "Failed to generate image");
+    } finally {
+      setGeneratingImage(false);
+    }
+  };
+
+  const generate = async () => {
+    if (!topic.trim()) return;
     setLoading(true);
     setResult(null);
     setError(null);
 
     try {
+      let imageBase64: string | undefined;
+      let imageMimeType: string | undefined;
+      if (imageDataUrl) {
+        const [meta, data] = imageDataUrl.split(",");
+        imageBase64 = data;
+        imageMimeType = meta.split(":")[1]?.split(";")[0];
+      }
+
       const res = await fetch("/api/content/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          brandName,
-          targetAudience,
-          contentIdea,
+          brandName: activeBrand?.name ?? "Unknown Brand",
+          targetAudience: activeBrand?.targetAudience ?? "",
+          contentIdea: topic,
           format,
+          tone,
           brandVoice: activeBrand?.brandVoice ?? null,
           brandPositioning: activeBrand?.positioning ?? null,
+          imageBase64,
+          imageMimeType,
         }),
       });
 
@@ -187,15 +285,20 @@ export default function ContentGenerator({
       const data: ContentResult = await res.json();
       setResult(data);
 
-      const history = JSON.parse(localStorage.getItem("adorar_caption_history") ?? "[]");
+      const history = JSON.parse(
+        localStorage.getItem("adorar_caption_history") ?? "[]"
+      );
       history.unshift({
         id: crypto.randomUUID(),
         caption: data.caption,
-        brandName,
-        topic: contentIdea,
+        brandName: activeBrand?.name ?? "",
+        topic,
         generatedAt: new Date().toISOString(),
       });
-      localStorage.setItem("adorar_caption_history", JSON.stringify(history));
+      localStorage.setItem(
+        "adorar_caption_history",
+        JSON.stringify(history.slice(0, 50))
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -203,117 +306,275 @@ export default function ContentGenerator({
     }
   };
 
-  const canSubmit = brandName.trim() && contentIdea.trim() && !loading;
+  const downloadDesign = () => {
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `design-${Date.now()}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, "image/png");
+  };
+
+  const resetAll = () => {
+    setResult(null);
+    setImageDataUrl(null);
+    setAiPrompt("");
+    setTopic("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
 
-      {/* Form */}
+      {/* ── Step 1: Visual Input ── */}
       <div className="bg-white border border-black/10 p-8">
-        <div className="max-w-2xl">
-          <div className="flex items-start justify-between mb-1">
-            <h2 className="text-base font-semibold">ADORAR™ Content Generator</h2>
-            {activeBrand && (
-              <span className="text-xs border border-black/15 px-2.5 py-1 rounded-full text-black/50 shrink-0 ml-4">
-                {activeBrand.name}
-              </span>
+        <p className="text-xs uppercase tracking-[0.2em] text-black/30 mb-5">
+          01 — Visual
+        </p>
+
+        {/* Mode toggle */}
+        <div className="flex gap-px mb-6 border border-black/10 w-fit">
+          {(["upload", "ai"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => {
+                setPhotoMode(m);
+                setImageDataUrl(null);
+                setImageError(null);
+              }}
+              className={`text-sm px-5 py-2.5 transition-colors ${
+                photoMode === m
+                  ? "bg-black text-white"
+                  : "text-black/50 hover:text-black bg-white"
+              }`}
+            >
+              {m === "upload" ? "Upload Photo" : "AI Generate"}
+            </button>
+          ))}
+        </div>
+
+        {photoMode === "upload" ? (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleUpload}
+              className="hidden"
+            />
+            {imageDataUrl ? (
+              <div className="flex items-start gap-6">
+                <img
+                  src={imageDataUrl}
+                  alt="Selected"
+                  className="w-40 h-40 object-cover border border-black/10 shrink-0"
+                />
+                <div className="flex flex-col gap-3 pt-1">
+                  <p className="text-sm text-black/60">Photo selected</p>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-xs text-black/40 hover:text-black transition-colors border border-black/15 px-3 py-1.5 rounded-full hover:border-black/40 w-fit"
+                  >
+                    Replace
+                  </button>
+                  <button
+                    onClick={() => setImageDataUrl(null)}
+                    className="text-xs text-black/30 hover:text-black transition-colors w-fit"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full max-w-sm border-2 border-dashed border-black/15 hover:border-black/40 transition-colors py-10 flex flex-col items-center gap-3 text-black/35 hover:text-black"
+              >
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+                <span className="text-sm font-medium">Choose a photo</span>
+                <span className="text-xs">JPG, PNG, WEBP</span>
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex gap-3 max-w-xl">
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !generatingImage && generateImage()}
+                placeholder="Describe the image — e.g. elegant linen dress on marble background, natural light"
+                className="flex-1 border border-black/15 px-4 py-3 text-sm placeholder:text-black/25 focus:outline-none focus:border-black/40 transition-colors bg-white"
+              />
+              <button
+                onClick={generateImage}
+                disabled={!aiPrompt.trim() || generatingImage}
+                className="shrink-0 bg-black text-white text-sm px-6 py-3 hover:bg-black/80 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                {generatingImage ? "Generating..." : "Generate"}
+              </button>
+            </div>
+
+            {imageError && (
+              <p className="text-xs text-red-500">{imageError}</p>
+            )}
+
+            {imageDataUrl && (
+              <div className="flex items-start gap-6">
+                <img
+                  src={imageDataUrl}
+                  alt="AI Generated"
+                  className="w-40 h-40 object-cover border border-black/10 shrink-0"
+                />
+                <div className="flex flex-col gap-3 pt-1">
+                  <p className="text-sm text-black/60">AI generated</p>
+                  <button
+                    onClick={generateImage}
+                    disabled={generatingImage}
+                    className="text-xs text-black/40 hover:text-black transition-colors border border-black/15 px-3 py-1.5 rounded-full hover:border-black/40 w-fit disabled:opacity-30"
+                  >
+                    Regenerate
+                  </button>
+                  <button
+                    onClick={() => setImageDataUrl(null)}
+                    className="text-xs text-black/30 hover:text-black transition-colors w-fit"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
             )}
           </div>
-          <p className="text-sm text-black/40 mb-8 leading-relaxed">
-            Trained on Schwartz, Godin, Hormozi, Suby, and luxury brand strategy.
-            People don&apos;t buy products — they buy outcomes, identity, and belonging.
-          </p>
+        )}
+      </div>
 
-          <div className="space-y-5">
+      {/* ── Step 2: Instructions ── */}
+      <div className="bg-white border border-black/10 p-8">
+        <p className="text-xs uppercase tracking-[0.2em] text-black/30 mb-5">
+          02 — Instructions
+        </p>
+
+        <div className="space-y-6 max-w-2xl">
+          {activeBrand && (
             <div>
               <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
-                Brand Name <span className="text-black/60">*</span>
+                Brand
               </label>
-              <input
-                type="text"
-                value={brandName}
-                onChange={(e) => setBrandName(e.target.value)}
-                placeholder="e.g. Tema Moda, Nike, Your Brand Co."
-                className="w-full border border-black/15 px-4 py-3 text-sm placeholder:text-black/25 focus:outline-none focus:border-black/40 transition-colors rounded-none bg-white"
-              />
+              <span className="inline-flex items-center gap-2 border border-black/15 px-3 py-2 text-sm text-black/70">
+                <span className="w-1.5 h-1.5 rounded-full bg-black" />
+                {activeBrand.name}
+              </span>
             </div>
+          )}
 
-            <div>
-              <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
-                Target Audience
-              </label>
-              <input
-                type="text"
-                value={targetAudience}
-                onChange={(e) => setTargetAudience(e.target.value)}
-                placeholder="e.g. Women 35–55 who value quality over quantity"
-                className="w-full border border-black/15 px-4 py-3 text-sm placeholder:text-black/25 focus:outline-none focus:border-black/40 transition-colors rounded-none bg-white"
-              />
+          <div>
+            <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
+              What is this post about?{" "}
+              <span className="text-black/60">*</span>
+            </label>
+            <textarea
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g. The new linen collection — effortless summer dressing for women who value quality over quantity"
+              rows={3}
+              className="w-full border border-black/15 px-4 py-3 text-sm placeholder:text-black/25 focus:outline-none focus:border-black/40 transition-colors bg-white resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
+              Format
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              {FORMATS.map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFormat(f)}
+                  className={`text-sm px-4 py-2 rounded-full border transition-colors ${
+                    format === f
+                      ? "bg-black text-white border-black"
+                      : "border-black/15 text-black/60 hover:border-black/40 hover:text-black"
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
             </div>
+          </div>
 
-            <div>
-              <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
-                Content Idea / Topic <span className="text-black/60">*</span>
-              </label>
-              <textarea
-                value={contentIdea}
-                onChange={(e) => setContentIdea(e.target.value)}
-                placeholder="e.g. Why I stopped buying trend pieces and what happened to my wardrobe"
-                rows={3}
-                className="w-full border border-black/15 px-4 py-3 text-sm placeholder:text-black/25 focus:outline-none focus:border-black/40 transition-colors rounded-none bg-white resize-none"
-              />
+          <div>
+            <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
+              Tone
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              {TONES.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTone(t)}
+                  className={`text-sm px-4 py-2 rounded-full border transition-colors ${
+                    tone === t
+                      ? "bg-black text-white border-black"
+                      : "border-black/15 text-black/60 hover:border-black/40 hover:text-black"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
             </div>
-
-            <div>
-              <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
-                Format
-              </label>
-              <div className="flex gap-2 flex-wrap">
-                {FORMATS.map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setFormat(f)}
-                    className={`text-sm px-4 py-2 rounded-full border transition-colors ${
-                      format === f
-                        ? "bg-black text-white border-black"
-                        : "border-black/15 text-black/60 hover:border-black/40 hover:text-black"
-                    }`}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={generate}
-              disabled={!canSubmit}
-              className="mt-2 w-full sm:w-auto bg-black text-white text-sm px-8 py-3 rounded-full hover:bg-black/80 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              {loading ? "Generating..." : "Generate with ADORAR™"}
-            </button>
           </div>
         </div>
       </div>
 
+      {/* ── Generate ── */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={generate}
+          disabled={!topic.trim() || loading}
+          className="bg-black text-white text-sm px-10 py-4 hover:bg-black/80 transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-medium tracking-wide"
+        >
+          {loading ? "Generating..." : "Generate with ADORAR™"}
+        </button>
+        {!imageDataUrl && (
+          <p className="text-xs text-black/30">
+            Add a photo to get a caption written for your exact visual.
+          </p>
+        )}
+      </div>
+
       {/* Loading */}
       {loading && (
-        <div>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex gap-1">
-              {[...Array(3)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-1.5 h-1.5 bg-black rounded-full animate-bounce"
-                  style={{ animationDelay: `${i * 0.15}s` }}
-                />
-              ))}
-            </div>
-            <p className="text-sm text-black/40">
-              Running ADORAR™ analysis — thinking deeply about your audience...
-            </p>
+        <div className="flex items-center gap-3 py-4">
+          <div className="flex gap-1">
+            {[...Array(3)].map((_, i) => (
+              <div
+                key={i}
+                className="w-1.5 h-1.5 bg-black rounded-full animate-bounce"
+                style={{ animationDelay: `${i * 0.15}s` }}
+              />
+            ))}
           </div>
-          <Skeleton />
+          <p className="text-sm text-black/40">
+            {imageDataUrl
+              ? "Analysing your visual and building ADORAR™ strategy..."
+              : "Running ADORAR™ analysis..."}
+          </p>
         </div>
       )}
 
@@ -324,9 +585,94 @@ export default function ContentGenerator({
         </div>
       )}
 
-      {/* Results */}
+      {/* ── Results ── */}
       {result && !loading && (
         <div className="space-y-6">
+
+          {/* Design Preview + Caption side by side */}
+          <div className="grid sm:grid-cols-2 gap-6 items-start">
+
+            {/* Design Preview */}
+            <div className="bg-white border border-black/10 p-6">
+              <p className="text-xs uppercase tracking-[0.2em] text-black/30 mb-4">
+                Design Preview
+              </p>
+              {imageDataUrl && previewImg ? (
+                <>
+                  <canvas
+                    ref={previewCanvasRef}
+                    style={{
+                      width: "100%",
+                      aspectRatio: "1 / 1",
+                      display: "block",
+                      border: "1px solid rgba(0,0,0,0.08)",
+                    }}
+                  />
+                  <div className="flex gap-2 mt-4 flex-wrap">
+                    <button
+                      onClick={() =>
+                        onOpenInDesigner?.({
+                          imageDataUrl,
+                          caption: result.caption,
+                        })
+                      }
+                      disabled={!onOpenInDesigner}
+                      className="flex-1 min-w-0 text-xs bg-black text-white px-3 py-2.5 hover:bg-black/80 transition-colors disabled:opacity-40 text-center font-medium"
+                    >
+                      Open in Design Creator
+                    </button>
+                    <button
+                      onClick={downloadDesign}
+                      className="text-xs border border-black/15 px-3 py-2.5 hover:border-black/40 transition-colors"
+                    >
+                      Download
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="aspect-square bg-zinc-50 border border-black/8 flex flex-col items-center justify-center gap-3 text-black/25">
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                  <p className="text-xs text-center px-6">
+                    Upload or generate a photo to see your design
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Caption */}
+            <div className="bg-white border border-black/10 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-black/30">
+                  Caption — {format}
+                </p>
+                <CopyButton text={result.caption} />
+              </div>
+              <p className="text-sm text-black/80 leading-relaxed whitespace-pre-line">
+                {result.caption}
+              </p>
+              {result.cta && (
+                <div className="mt-5 pt-4 border-t border-black/8">
+                  <p className="text-xs uppercase tracking-[0.2em] text-black/30 mb-1.5">
+                    CTA
+                  </p>
+                  <p className="text-sm font-medium text-black/80">
+                    {result.cta}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* ADORAR Analysis */}
           <div className="bg-white border border-black/10 p-8">
@@ -334,82 +680,66 @@ export default function ContentGenerator({
               ADORAR™ Analysis
             </p>
             <div className="grid sm:grid-cols-2 gap-6">
-              {ADORAR_LABELS.map(({ key, label, letter }) => (
+              {ADORAR_LABELS.map(({ key, letter, label }) => (
                 <div key={key} className="border-l-2 border-black/10 pl-4">
                   <div className="flex items-baseline gap-2 mb-2">
-                    <span className="text-lg font-semibold leading-none">{letter}</span>
-                    <span className="text-xs text-black/40 uppercase tracking-wider">{label}</span>
+                    <span className="text-lg font-semibold leading-none">
+                      {letter}
+                    </span>
+                    <span className="text-xs text-black/40 uppercase tracking-wider">
+                      {label}
+                    </span>
                   </div>
-                  <p className="text-sm text-black/70 leading-relaxed">{result.adorar[key]}</p>
+                  <p className="text-sm text-black/70 leading-relaxed">
+                    {result.adorar[key]}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Core + Emotional */}
-          <div className="grid sm:grid-cols-2 gap-4">
-            <ResultCard label="Core Message">
-              <p className="text-sm font-medium leading-relaxed text-black/80">
+          {/* Core + Emotional + Visual Direction */}
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div className="bg-white border border-black/10 p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-black/30 mb-3">
+                Core Message
+              </p>
+              <p className="text-sm font-medium text-black/80 leading-relaxed">
                 {result.coreMessage}
               </p>
-            </ResultCard>
-            <ResultCard label="Emotional Message" variant="accent">
-              <p className="text-sm leading-relaxed text-white/80">
+            </div>
+            <div className="bg-black text-white p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/40 mb-3">
+                Emotional Message
+              </p>
+              <p className="text-sm text-white/80 leading-relaxed">
                 {result.emotionalMessage}
               </p>
-            </ResultCard>
-          </div>
-
-          {/* Visual Direction */}
-          <ResultCard label="Visual Direction">
-            <p className="text-sm text-black/70 leading-relaxed">
-              {result.visualDirection}
-            </p>
-          </ResultCard>
-
-          {/* Caption */}
-          <ResultCard label={`Caption — ${format}`} variant="caption">
-            <p className="text-sm text-black/80 leading-relaxed whitespace-pre-line">
-              {result.caption}
-            </p>
-            <div className="flex gap-2 mt-4">
-              <CopyButton text={result.caption} />
-              <CanvaButton
-                text={result.caption}
-                canvaUrl="https://www.canva.com/create/instagram-posts/"
-                label="Create in Canva ↗"
-              />
             </div>
-          </ResultCard>
-
-          {/* CTA */}
-          <div className="bg-white border border-black/10 p-6 flex items-center justify-between gap-6">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-black/30 mb-2">Call to Action</p>
-              <p className="text-sm font-medium">{result.cta}</p>
+            <div className="bg-white border border-black/10 p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-black/30 mb-3">
+                Visual Direction
+              </p>
+              <p className="text-sm text-black/70 leading-relaxed">
+                {result.visualDirection}
+              </p>
             </div>
-            <button
-              onClick={() => navigator.clipboard.writeText(result.cta)}
-              className="shrink-0 text-xs text-black/40 hover:text-black transition-colors border border-black/15 px-3 py-1.5 rounded-full hover:border-black/40"
-            >
-              Copy
-            </button>
           </div>
 
           {/* Psychological Explanation */}
-          <ResultCard label="Psychological Explanation">
+          <div className="bg-white border border-black/10 p-6">
+            <p className="text-xs uppercase tracking-[0.2em] text-black/30 mb-3">
+              Psychological Explanation
+            </p>
             <p className="text-sm text-black/60 leading-relaxed">
               {result.psychologicalExplanation}
             </p>
-          </ResultCard>
+          </div>
 
-          {/* Generate again */}
+          {/* Start over */}
           <div className="flex justify-end">
             <button
-              onClick={() => {
-                setResult(null);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
+              onClick={resetAll}
               className="text-xs text-black/40 hover:text-black transition-colors"
             >
               ← Start over
