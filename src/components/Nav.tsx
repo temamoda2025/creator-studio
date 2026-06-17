@@ -23,6 +23,7 @@ export default function Nav() {
 
   const links = [
     { href: "/brands", label: "Brands" },
+    { href: "/brand-kit", label: "Brand Kit" },
     { href: "/dashboard", label: "Dashboard" },
   ];
 

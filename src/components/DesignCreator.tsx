@@ -2,6 +2,13 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useBrands } from "@/context/BrandsContext";
+import { getBrandKit, saveBrandKit } from "@/lib/brandKit";
+import {
+  FONT_CATEGORIES,
+  GOOGLE_FONTS_HREF,
+  DEFAULT_FONT,
+  type FontFamily,
+} from "@/lib/fonts";
 
 // ─── Formats ──────────────────────────────────────────────────────────────────
 
@@ -48,73 +55,6 @@ const TEMPLATES = [
 ] as const;
 
 type TemplateId = (typeof TEMPLATES)[number]["id"];
-
-// ─── Fonts ────────────────────────────────────────────────────────────────────
-
-const FONT_CATEGORIES = [
-  {
-    label: "Luxury",
-    fonts: [
-      { family: "Playfair Display",   label: "Playfair Display"   },
-      { family: "Cormorant Garamond", label: "Cormorant Garamond" },
-      { family: "Libre Baskerville",  label: "Libre Baskerville"  },
-    ],
-  },
-  {
-    label: "Modern",
-    fonts: [
-      { family: "Montserrat", label: "Montserrat" },
-      { family: "Inter",      label: "Inter"      },
-      { family: "Raleway",    label: "Raleway"    },
-    ],
-  },
-  {
-    label: "Bold",
-    fonts: [
-      { family: "Oswald",     label: "Oswald"     },
-      { family: "Anton",      label: "Anton"      },
-      { family: "Bebas Neue", label: "Bebas Neue" },
-    ],
-  },
-  {
-    label: "Elegant",
-    fonts: [
-      { family: "Lato",         label: "Lato"         },
-      { family: "Josefin Sans", label: "Josefin Sans" },
-      { family: "Nunito",       label: "Nunito"       },
-    ],
-  },
-  {
-    label: "Casual",
-    fonts: [
-      { family: "Poppins",   label: "Poppins"   },
-      { family: "Quicksand", label: "Quicksand" },
-      { family: "Pacifico",  label: "Pacifico"  },
-    ],
-  },
-] as const;
-
-type FontFamily = (typeof FONT_CATEGORIES)[number]["fonts"][number]["family"];
-const DEFAULT_FONT: FontFamily = "Inter";
-
-const GOOGLE_FONTS_HREF =
-  "https://fonts.googleapis.com/css2?" +
-  "family=Anton&" +
-  "family=Bebas+Neue&" +
-  "family=Cormorant+Garamond:wght@300;400;500;600;700&" +
-  "family=Inter:wght@300;400;500;600;700&" +
-  "family=Josefin+Sans:wght@300;400;500;600;700&" +
-  "family=Lato:wght@300;400;700&" +
-  "family=Libre+Baskerville:wght@400;700&" +
-  "family=Montserrat:wght@300;400;500;600;700&" +
-  "family=Nunito:wght@300;400;500;600;700&" +
-  "family=Oswald:wght@300;400;500;600;700&" +
-  "family=Pacifico&" +
-  "family=Playfair+Display:wght@300;400;500;600;700&" +
-  "family=Poppins:wght@300;400;500;600;700&" +
-  "family=Quicksand:wght@300;400;500;600;700&" +
-  "family=Raleway:wght@300;400;500;600;700&" +
-  "display=swap";
 
 // ─── Canvas helpers ───────────────────────────────────────────────────────────
 
@@ -583,6 +523,9 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   const [logoDataUrl,    setLogoDataUrl]    = useState<string | null>(null);
   const [logoPosition,   setLogoPosition]   = useState<"top-left" | "top-right">("top-right");
 
+  // Brand kit handle (overrides activeBrand.handle when set)
+  const [brandKitHandle, setBrandKitHandle] = useState<string>("");
+
   // Background image
   const [bgImg,          setBgImg]          = useState<HTMLImageElement | null>(null);
   const [bgImgThumb,     setBgImgThumb]     = useState<string | null>(null);
@@ -604,9 +547,11 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   const prevW        = Math.round(fmt.w * scale);
   const prevH        = Math.round(fmt.h * scale);
   const brandName    = activeBrand?.name ?? "Your Brand";
-  const rawHandle    = activeBrand?.handle
-    ? activeBrand.handle.replace(/^@+/, "")
-    : brandName.toLowerCase().replace(/\s+/g, "");
+  const rawHandle    = brandKitHandle
+    ? brandKitHandle.replace(/^@+/, "")
+    : activeBrand?.handle
+      ? activeBrand.handle.replace(/^@+/, "")
+      : brandName.toLowerCase().replace(/\s+/g, "");
   const handle       = `@${rawHandle}`;
   const activeCaption = isCarousel ? (slides[activeSlide] ?? "") : caption;
 
@@ -636,20 +581,28 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
     document.head.appendChild(link);
   }, []);
 
-  // ── Per-brand persistence ────────────────────────────────────────────────────
+  // ── Brand kit: load defaults when active brand changes ───────────────────────
   useEffect(() => {
-    if (!activeBrand) return;
-    const saved = localStorage.getItem(`font-${activeBrand.id}`);
-    setFontFamily(saved ?? DEFAULT_FONT);
-  }, [activeBrand]);
-
-  useEffect(() => {
-    if (!activeBrand) { setLogoImg(null); setLogoDataUrl(null); return; }
-    const saved = localStorage.getItem(`logo-${activeBrand.id}`);
-    if (saved) {
+    if (!activeBrand) {
+      setBgColor(BG_PRESETS[0].hex);
+      setTextColor("#ffffff");
+      setFontFamily(DEFAULT_FONT);
+      setBrandKitHandle("");
+      setLogoImg(null);
+      setLogoDataUrl(null);
+      return;
+    }
+    const kit = getBrandKit(activeBrand.id);
+    setBgColor(kit.primaryColour);
+    setTextColor(kit.secondaryColour);
+    setFontFamily(kit.headingFont);
+    setBrandKitHandle(kit.handle);
+    if (kit.logo) {
       const img = new Image();
-      img.onload = () => { setLogoImg(img); setLogoDataUrl(saved); };
-      img.src = saved;
+      img.onload = () => setLogoImg(img);
+      img.onerror = () => { setLogoImg(null); setLogoDataUrl(null); };
+      img.src = kit.logo;
+      setLogoDataUrl(kit.logo);
     } else {
       setLogoImg(null);
       setLogoDataUrl(null);
@@ -675,7 +628,8 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   const pickFont = (family: string) => {
     setFontFamily(family);
     if (activeBrand) {
-      try { localStorage.setItem(`font-${activeBrand.id}`, family); } catch { /* quota */ }
+      const kit = getBrandKit(activeBrand.id);
+      saveBrandKit(activeBrand.id, { ...kit, headingFont: family });
     }
   };
 
@@ -689,7 +643,8 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
       img.onload = () => {
         setLogoImg(img); setLogoDataUrl(dataUrl);
         if (activeBrand) {
-          try { localStorage.setItem(`logo-${activeBrand.id}`, dataUrl); } catch { /* quota */ }
+          const kit = getBrandKit(activeBrand.id);
+          saveBrandKit(activeBrand.id, { ...kit, logo: dataUrl });
         }
       };
       img.src = dataUrl;
@@ -700,7 +655,10 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
 
   const removeLogo = () => {
     setLogoImg(null); setLogoDataUrl(null);
-    if (activeBrand) localStorage.removeItem(`logo-${activeBrand.id}`);
+    if (activeBrand) {
+      const kit = getBrandKit(activeBrand.id);
+      saveBrandKit(activeBrand.id, { ...kit, logo: null });
+    }
   };
 
   const handleBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
