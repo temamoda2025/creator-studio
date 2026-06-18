@@ -9,14 +9,35 @@ import {
   type ReactNode,
 } from "react";
 import type { Brand } from "@/types/brand";
+import { supabase } from "@/lib/supabase";
+
+const PLACEHOLDER_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 interface BrandsContextValue {
   brands: Brand[];
   activeBrand: Brand | null;
   setActiveBrandId: (id: string) => void;
-  addBrand: (data: Omit<Brand, "id" | "createdAt" | "updatedAt">) => Brand;
-  updateBrand: (id: string, data: Partial<Omit<Brand, "id" | "createdAt">>) => void;
-  deleteBrand: (id: string) => void;
+  addBrand: (data: Omit<Brand, "id" | "createdAt" | "updatedAt">) => Promise<Brand>;
+  updateBrand: (id: string, data: Partial<Omit<Brand, "id" | "createdAt">>) => Promise<void>;
+  deleteBrand: (id: string) => Promise<void>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowToBrand(row: Record<string, any>): Brand {
+  return {
+    id: row.id,
+    name: row.name,
+    niche: row.niche ?? "",
+    handle: row.handle ?? undefined,
+    platforms: row.platforms ?? [],
+    targetAudience: row.target_audience ?? "",
+    positioning: row.positioning ?? undefined,
+    mission: row.mission ?? undefined,
+    vision: row.vision ?? undefined,
+    brandVoice: row.brand_voice ?? { traits: [] },
+    createdAt: row.created_at,
+    updatedAt: row.updated_at ?? row.created_at,
+  };
 }
 
 const BrandsContext = createContext<BrandsContextValue | null>(null);
@@ -24,45 +45,49 @@ const BrandsContext = createContext<BrandsContextValue | null>(null);
 export function BrandsProvider({ children }: { children: ReactNode }) {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [activeBrandId, setActiveBrandIdState] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const raw = localStorage.getItem("agency_brands");
+    supabase
+      .from("brands")
+      .select("*")
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        if (data) setBrands(data.map(rowToBrand));
+      });
+
     const activeId = localStorage.getItem("agency_active_brand_id");
-    if (raw) {
-      try {
-        setBrands(JSON.parse(raw));
-      } catch {
-        // ignore malformed data
-      }
-    }
     if (activeId) setActiveBrandIdState(activeId);
-    setHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
-    localStorage.setItem("agency_brands", JSON.stringify(brands));
-  }, [brands, hydrated]);
-
-  useEffect(() => {
-    if (!hydrated) return;
     if (activeBrandId) {
       localStorage.setItem("agency_active_brand_id", activeBrandId);
     } else {
       localStorage.removeItem("agency_active_brand_id");
     }
-  }, [activeBrandId, hydrated]);
+  }, [activeBrandId]);
 
   const addBrand = useCallback(
-    (data: Omit<Brand, "id" | "createdAt" | "updatedAt">): Brand => {
-      const now = new Date().toISOString();
-      const brand: Brand = {
-        ...data,
-        id: crypto.randomUUID(),
-        createdAt: now,
-        updatedAt: now,
-      };
+    async (data: Omit<Brand, "id" | "createdAt" | "updatedAt">): Promise<Brand> => {
+      const { data: row, error } = await supabase
+        .from("brands")
+        .insert({
+          user_id: PLACEHOLDER_USER_ID,
+          name: data.name,
+          handle: data.handle ?? null,
+          niche: data.niche,
+          platforms: data.platforms,
+          target_audience: data.targetAudience,
+          positioning: data.positioning ?? null,
+          mission: data.mission ?? null,
+          vision: data.vision ?? null,
+          brand_voice: data.brandVoice,
+        })
+        .select()
+        .single();
+
+      if (error || !row) throw error ?? new Error("Insert failed");
+      const brand = rowToBrand(row);
       setBrands((prev) => [...prev, brand]);
       setActiveBrandIdState((prev) => prev ?? brand.id);
       return brand;
@@ -71,19 +96,35 @@ export function BrandsProvider({ children }: { children: ReactNode }) {
   );
 
   const updateBrand = useCallback(
-    (id: string, data: Partial<Omit<Brand, "id" | "createdAt">>) => {
-      setBrands((prev) =>
-        prev.map((b) =>
-          b.id === id
-            ? { ...b, ...data, updatedAt: new Date().toISOString() }
-            : b
-        )
-      );
+    async (id: string, data: Partial<Omit<Brand, "id" | "createdAt">>) => {
+      const patch: Record<string, unknown> = {};
+      if (data.name !== undefined) patch.name = data.name;
+      if (data.handle !== undefined) patch.handle = data.handle ?? null;
+      if (data.niche !== undefined) patch.niche = data.niche;
+      if (data.platforms !== undefined) patch.platforms = data.platforms;
+      if (data.targetAudience !== undefined) patch.target_audience = data.targetAudience;
+      if (data.positioning !== undefined) patch.positioning = data.positioning ?? null;
+      if (data.mission !== undefined) patch.mission = data.mission ?? null;
+      if (data.vision !== undefined) patch.vision = data.vision ?? null;
+      if (data.brandVoice !== undefined) patch.brand_voice = data.brandVoice;
+
+      const { data: row, error } = await supabase
+        .from("brands")
+        .update(patch)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error || !row) throw error ?? new Error("Update failed");
+      const updated = rowToBrand(row);
+      setBrands((prev) => prev.map((b) => (b.id === id ? updated : b)));
     },
     []
   );
 
-  const deleteBrand = useCallback((id: string) => {
+  const deleteBrand = useCallback(async (id: string) => {
+    const { error } = await supabase.from("brands").delete().eq("id", id);
+    if (error) throw error;
     setBrands((prev) => {
       const next = prev.filter((b) => b.id !== id);
       setActiveBrandIdState((current) => {

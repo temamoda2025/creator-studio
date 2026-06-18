@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useBrands } from "@/context/BrandsContext";
+import { supabase } from "@/lib/supabase";
 
 const DURATIONS = ["15s", "30s", "60s", "90s"] as const;
 type Duration = (typeof DURATIONS)[number];
@@ -241,18 +242,14 @@ export default function ReelScriptGenerator() {
       const data: ReelScript = await res.json();
       setResult(data);
 
-      const history = JSON.parse(
-        localStorage.getItem("adorar_reel_script_history") ?? "[]"
-      );
-      history.unshift({
-        id: crypto.randomUUID(),
-        topic,
-        brandName: selectedBrand?.name ?? "",
-        duration,
-        script: data,
-        generatedAt: new Date().toISOString(),
-      });
-      localStorage.setItem("adorar_reel_script_history", JSON.stringify(history));
+      if (selectedBrandId) {
+        supabase.from("reel_script_history").insert({
+          brand_id: selectedBrandId,
+          script: data,
+          topic,
+          duration,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

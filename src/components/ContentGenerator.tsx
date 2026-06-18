@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useBrands } from "@/context/BrandsContext";
+import { supabase } from "@/lib/supabase";
 
 const FORMATS = ["Single Post", "Carousel", "Reel", "Story"] as const;
 type Format = (typeof FORMATS)[number];
@@ -285,20 +286,14 @@ export default function ContentGenerator({
       const data: ContentResult = await res.json();
       setResult(data);
 
-      const history = JSON.parse(
-        localStorage.getItem("adorar_caption_history") ?? "[]"
-      );
-      history.unshift({
-        id: crypto.randomUUID(),
-        caption: data.caption,
-        brandName: activeBrand?.name ?? "",
-        topic,
-        generatedAt: new Date().toISOString(),
-      });
-      localStorage.setItem(
-        "adorar_caption_history",
-        JSON.stringify(history.slice(0, 50))
-      );
+      if (activeBrand?.id) {
+        supabase.from("caption_history").insert({
+          brand_id: activeBrand.id,
+          caption: data.caption,
+          topic,
+          format,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

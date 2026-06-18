@@ -1,3 +1,5 @@
+import { supabase } from "./supabase";
+
 export interface BrandKit {
   primaryColour: string;
   secondaryColour: string;
@@ -18,20 +20,38 @@ export const DEFAULT_KIT: BrandKit = {
   handle: "",
 };
 
-export function getBrandKit(brandId: string): BrandKit {
-  if (typeof window === "undefined") return { ...DEFAULT_KIT };
-  const raw = localStorage.getItem(`brandkit-${brandId}`);
-  if (!raw) return { ...DEFAULT_KIT };
-  try {
-    return { ...DEFAULT_KIT, ...JSON.parse(raw) };
-  } catch {
-    return { ...DEFAULT_KIT };
-  }
+export async function getBrandKit(brandId: string): Promise<BrandKit> {
+  const { data, error } = await supabase
+    .from("brand_kit")
+    .select("*")
+    .eq("brand_id", brandId)
+    .single();
+
+  if (error || !data) return { ...DEFAULT_KIT };
+
+  return {
+    primaryColour: data.primary_colour ?? DEFAULT_KIT.primaryColour,
+    secondaryColour: data.secondary_colour ?? DEFAULT_KIT.secondaryColour,
+    accentColour: data.accent_colour ?? DEFAULT_KIT.accentColour,
+    headingFont: data.heading_font ?? DEFAULT_KIT.headingFont,
+    bodyFont: data.body_font ?? DEFAULT_KIT.bodyFont,
+    logo: data.logo_base64 ?? null,
+    handle: data.handle ?? "",
+  };
 }
 
-export function saveBrandKit(brandId: string, kit: BrandKit): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(`brandkit-${brandId}`, JSON.stringify(kit));
-  } catch { /* quota */ }
+export async function saveBrandKit(brandId: string, kit: BrandKit): Promise<void> {
+  await supabase.from("brand_kit").upsert(
+    {
+      brand_id: brandId,
+      primary_colour: kit.primaryColour,
+      secondary_colour: kit.secondaryColour,
+      accent_colour: kit.accentColour,
+      heading_font: kit.headingFont,
+      body_font: kit.bodyFont,
+      logo_base64: kit.logo,
+      handle: kit.handle,
+    },
+    { onConflict: "brand_id" }
+  );
 }

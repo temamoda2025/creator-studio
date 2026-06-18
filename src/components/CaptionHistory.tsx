@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 
 interface HistoryItem {
   id: string;
   caption: string;
   brandName: string;
   topic: string;
+  format: string | null;
   generatedAt: string;
 }
 
@@ -29,17 +31,53 @@ function CopyBtn({ text }: { text: string }) {
 
 export default function CaptionHistory() {
   const [items, setItems] = useState<HistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const raw = localStorage.getItem("adorar_caption_history");
-    setItems(raw ? JSON.parse(raw) : []);
+    supabase
+      .from("caption_history")
+      .select("id, caption, topic, format, created_at, brands(name)")
+      .order("created_at", { ascending: false })
+      .limit(50)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then(({ data }) => {
+        if (data) {
+          setItems(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            data.map((row: any) => ({
+              id: row.id,
+              caption: row.caption,
+              brandName: row.brands?.name ?? "Unknown",
+              topic: row.topic ?? "",
+              format: row.format ?? null,
+              generatedAt: row.created_at,
+            }))
+          );
+        }
+        setLoading(false);
+      });
   }, []);
 
-  const remove = (id: string) => {
-    const next = items.filter((i) => i.id !== id);
-    setItems(next);
-    localStorage.setItem("adorar_caption_history", JSON.stringify(next));
+  const remove = async (id: string) => {
+    await supabase.from("caption_history").delete().eq("id", id);
+    setItems((prev) => prev.filter((i) => i.id !== id));
   };
+
+  const clearAll = async () => {
+    const ids = items.map((i) => i.id);
+    if (ids.length > 0) {
+      await supabase.from("caption_history").delete().in("id", ids);
+    }
+    setItems([]);
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white border border-black/10 p-12 text-center">
+        <p className="text-sm text-black/30">Loading history…</p>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -59,10 +97,7 @@ export default function CaptionHistory() {
           {items.length} caption{items.length !== 1 ? "s" : ""} saved
         </p>
         <button
-          onClick={() => {
-            setItems([]);
-            localStorage.removeItem("adorar_caption_history");
-          }}
+          onClick={clearAll}
           className="text-xs text-black/30 hover:text-red-500 transition-colors"
         >
           Clear all
@@ -76,6 +111,11 @@ export default function CaptionHistory() {
               <span className="text-xs border border-black/15 px-2.5 py-1 rounded-full text-black/60">
                 {item.brandName}
               </span>
+              {item.format && (
+                <span className="text-xs border border-black/10 px-2.5 py-1 rounded-full text-black/40">
+                  {item.format}
+                </span>
+              )}
               <span className="text-xs text-black/30">
                 {new Date(item.generatedAt).toLocaleDateString("en-AU", {
                   day: "numeric",

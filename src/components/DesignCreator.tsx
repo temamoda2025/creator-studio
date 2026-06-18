@@ -506,6 +506,7 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef   = useRef<HTMLInputElement>(null);
   const captionRef   = useRef(BLANK_CAPTION);
+  const kitRef       = useRef<import("@/lib/brandKit").BrandKit | null>(null);
 
   // Core design state
   const [formatId,       setFormatId]       = useState(FORMATS[0].id);
@@ -584,6 +585,7 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   // ── Brand kit: load defaults when active brand changes ───────────────────────
   useEffect(() => {
     if (!activeBrand) {
+      kitRef.current = null;
       setBgColor(BG_PRESETS[0].hex);
       setTextColor("#ffffff");
       setFontFamily(DEFAULT_FONT);
@@ -592,21 +594,23 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
       setLogoDataUrl(null);
       return;
     }
-    const kit = getBrandKit(activeBrand.id);
-    setBgColor(kit.primaryColour);
-    setTextColor(kit.secondaryColour);
-    setFontFamily(kit.headingFont);
-    setBrandKitHandle(kit.handle);
-    if (kit.logo) {
-      const img = new Image();
-      img.onload = () => setLogoImg(img);
-      img.onerror = () => { setLogoImg(null); setLogoDataUrl(null); };
-      img.src = kit.logo;
-      setLogoDataUrl(kit.logo);
-    } else {
-      setLogoImg(null);
-      setLogoDataUrl(null);
-    }
+    getBrandKit(activeBrand.id).then((kit) => {
+      kitRef.current = kit;
+      setBgColor(kit.primaryColour);
+      setTextColor(kit.secondaryColour);
+      setFontFamily(kit.headingFont);
+      setBrandKitHandle(kit.handle);
+      if (kit.logo) {
+        const img = new Image();
+        img.onload = () => setLogoImg(img);
+        img.onerror = () => { setLogoImg(null); setLogoDataUrl(null); };
+        img.src = kit.logo;
+        setLogoDataUrl(kit.logo);
+      } else {
+        setLogoImg(null);
+        setLogoDataUrl(null);
+      }
+    });
   }, [activeBrand]);
 
   // ── Seed from Content Generator ──────────────────────────────────────────────
@@ -627,9 +631,10 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const pickFont = (family: string) => {
     setFontFamily(family);
-    if (activeBrand) {
-      const kit = getBrandKit(activeBrand.id);
-      saveBrandKit(activeBrand.id, { ...kit, headingFont: family });
+    if (activeBrand && kitRef.current) {
+      const next = { ...kitRef.current, headingFont: family };
+      kitRef.current = next;
+      saveBrandKit(activeBrand.id, next);
     }
   };
 
@@ -642,9 +647,10 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
       const img = new Image();
       img.onload = () => {
         setLogoImg(img); setLogoDataUrl(dataUrl);
-        if (activeBrand) {
-          const kit = getBrandKit(activeBrand.id);
-          saveBrandKit(activeBrand.id, { ...kit, logo: dataUrl });
+        if (activeBrand && kitRef.current) {
+          const next = { ...kitRef.current, logo: dataUrl };
+          kitRef.current = next;
+          saveBrandKit(activeBrand.id, next);
         }
       };
       img.src = dataUrl;
@@ -655,9 +661,10 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
 
   const removeLogo = () => {
     setLogoImg(null); setLogoDataUrl(null);
-    if (activeBrand) {
-      const kit = getBrandKit(activeBrand.id);
-      saveBrandKit(activeBrand.id, { ...kit, logo: null });
+    if (activeBrand && kitRef.current) {
+      const next = { ...kitRef.current, logo: null };
+      kitRef.current = next;
+      saveBrandKit(activeBrand.id, next);
     }
   };
 

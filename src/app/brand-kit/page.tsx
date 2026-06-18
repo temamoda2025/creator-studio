@@ -123,7 +123,7 @@ export default function BrandKitPage() {
   // Load kit when active brand changes
   useEffect(() => {
     if (!activeBrand) { setKit(null); return; }
-    setKit(getBrandKit(activeBrand.id));
+    getBrandKit(activeBrand.id).then(setKit);
   }, [activeBrand]);
 
   const persist = useCallback(
