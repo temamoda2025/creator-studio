@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useBrands } from "@/context/BrandsContext";
 import { getBrandKit, saveBrandKit, type BrandKit } from "@/lib/brandKit";
 import { FONT_CATEGORIES, GOOGLE_FONTS_HREF } from "@/lib/fonts";
+import { generateBrandGuidePDF } from "@/lib/generateBrandGuidePDF";
 
 // ── Colour swatch field ───────────────────────────────────────────────────────
 
@@ -162,6 +163,22 @@ export default function BrandKitPage() {
 
   const removeLogo = () => update({ logo: null });
 
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+
+  const downloadPDF = useCallback(async () => {
+    if (!activeBrand || !kit || pdfGenerating) return;
+    setPdfGenerating(true);
+    try {
+      const blueprintRaw = localStorage.getItem("creator_brand_blueprint");
+      const blueprint = blueprintRaw ? JSON.parse(blueprintRaw) : null;
+      generateBrandGuidePDF(activeBrand, kit, blueprint);
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+    } finally {
+      setPdfGenerating(false);
+    }
+  }, [activeBrand, kit, pdfGenerating]);
+
   return (
     <>
       <Nav />
@@ -173,13 +190,35 @@ export default function BrandKitPage() {
             <p className="text-xs tracking-[0.3em] uppercase text-white/30 mb-4">
               Brand Kit
             </p>
-            <h1 className="text-4xl font-semibold tracking-tight mb-3">
-              {activeBrand ? activeBrand.name : "No brand selected"}
-            </h1>
-            <p className="text-white/50 text-sm max-w-lg leading-relaxed">
-              Set your brand colours, fonts, logo, and handle. Design Creator
-              will use these automatically as your starting defaults.
-            </p>
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <h1 className="text-4xl font-semibold tracking-tight mb-3">
+                  {activeBrand ? activeBrand.name : "No brand selected"}
+                </h1>
+                <p className="text-white/50 text-sm max-w-lg leading-relaxed">
+                  Set your brand colours, fonts, logo, and handle. Design Creator
+                  will use these automatically as your starting defaults.
+                </p>
+              </div>
+              {activeBrand && kit && (
+                <button
+                  onClick={downloadPDF}
+                  disabled={pdfGenerating}
+                  className="shrink-0 flex items-center gap-2 text-sm border border-white/20 text-white/70 px-5 py-2.5 rounded-full hover:border-white/50 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed mt-1"
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <path d="M8 2v8m0 0l-3-3m3 3l3-3M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  {pdfGenerating ? "Generating…" : "Download Brand Guide"}
+                </button>
+              )}
+            </div>
           </div>
         </section>
 

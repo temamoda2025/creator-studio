@@ -30,7 +30,8 @@
       "Bash(vercel logs *)",
       "Bash(npx vercel *)",
       "Bash(npx next *)",
-      "Skill(run)"
+      "Skill(run)",
+      "Bash(CLAUDE_CODE_TMPDIR=/tmp cat *)"
     ]
   }
 }
