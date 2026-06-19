@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Nav from "@/components/Nav";
 import Link from "next/link";
 import ContentGenerator from "@/components/ContentGenerator";
@@ -258,6 +258,26 @@ function RecentPostsSkeleton() {
   );
 }
 
+function IdeasSkeleton() {
+  return (
+    <div className="grid sm:grid-cols-2 gap-4 animate-pulse">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="border border-black/10 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="h-2 bg-black/8 rounded w-20" />
+            <div className="flex gap-2">
+              <div className="h-5 bg-black/6 rounded-full w-16" />
+              <div className="h-5 bg-black/6 rounded-full w-10" />
+            </div>
+          </div>
+          <div className="h-3 bg-black/8 rounded w-3/4 mb-1.5" />
+          <div className="h-3 bg-black/6 rounded w-1/2" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ErrorBanner({ message }: { message: string }) {
   return (
     <div className="bg-red-50 border border-red-200 px-5 py-3 text-xs text-red-600 rounded">
@@ -293,6 +313,11 @@ export default function DashboardPage() {
   const [igLoading, setIgLoading] = useState(true);
   const [igError,   setIgError]   = useState<string | null>(null);
 
+  // Ideas
+  const [ideas,        setIdeas]        = useState<Idea[]>([]);
+  const [ideasLoading, setIdeasLoading] = useState(false);
+  const ideasCacheRef = useRef<Map<string, Idea[]>>(new Map());
+
   // Calendar
   const [today,        setToday]       = useState<Date | null>(null);
   const [calendarData, setCalendarData] = useState<CalendarData>({});
@@ -320,6 +345,41 @@ export default function DashboardPage() {
     setAddingIdea(null);
   }, [activeBrand]);
 
+  // Fetch brand-specific content ideas (Claude Haiku, cached per brand)
+  const fetchIdeas = useCallback((brand: Brand) => {
+    const cached = ideasCacheRef.current.get(brand.id);
+    if (cached) { setIdeas(cached); return; }
+    setIdeasLoading(true);
+    let cancelled = false;
+    fetch("/api/ideas/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        niche: brand.niche,
+        targetAudience: brand.targetAudience,
+        positioning: brand.positioning ?? null,
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (Array.isArray(data)) {
+          ideasCacheRef.current.set(brand.id, data);
+          setIdeas(data);
+        } else {
+          setIdeas(getIdeasForBrand(brand));
+        }
+      })
+      .catch(() => { if (!cancelled) setIdeas(getIdeasForBrand(brand)); })
+      .finally(() => { if (!cancelled) setIdeasLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!activeBrand) { setIdeas([]); return; }
+    return fetchIdeas(activeBrand);
+  }, [activeBrand, fetchIdeas]);
+
   // ── Derived ────────────────────────────────────────────────────────────────
 
   const weekDays  = today ? getWeekDays(today) : [];
@@ -330,7 +390,6 @@ export default function DashboardPage() {
   const brandHandle   = activeBrand?.handle?.replace(/^@+/, "") ?? "";
   const isIgConnected = !!(igData && brandHandle && igData.username.toLowerCase() === brandHandle.toLowerCase());
   const stats         = isIgConnected ? computeStats(igData!) : null;
-  const ideas         = activeBrand ? getIdeasForBrand(activeBrand) : [];
 
   // Week label
   const weekLabel = weekDays.length === 7
@@ -587,13 +646,28 @@ export default function DashboardPage() {
                         <h2 className="text-sm font-semibold">Content Ideas</h2>
                         <p className="text-xs text-black/35 mt-0.5">{activeBrand.niche}</p>
                       </div>
-                      <button
-                        onClick={() => setTab("content-generator")}
-                        className="text-xs text-black/40 hover:text-black transition-colors"
-                      >
-                        Generate with ADORAR™ →
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => {
+                            if (!activeBrand || ideasLoading) return;
+                            ideasCacheRef.current.delete(activeBrand.id);
+                            fetchIdeas(activeBrand);
+                          }}
+                          disabled={ideasLoading}
+                          className="text-xs text-black/25 hover:text-black transition-colors disabled:opacity-30"
+                          title="Refresh ideas"
+                        >
+                          ↻
+                        </button>
+                        <button
+                          onClick={() => setTab("content-generator")}
+                          className="text-xs text-black/40 hover:text-black transition-colors"
+                        >
+                          Generate with ADORAR™ →
+                        </button>
+                      </div>
                     </div>
+                    {ideasLoading ? <IdeasSkeleton /> : (
                     <div className="grid sm:grid-cols-2 gap-4">
                       {ideas.map(({ pillar, format, hook, effort }) => (
                         <div key={hook} className="border border-black/10 p-5 hover:border-black/30 transition-colors">
@@ -652,6 +726,7 @@ export default function DashboardPage() {
                         </div>
                       ))}
                     </div>
+                    )}
                   </div>
 
                   {/* Recent Posts */}

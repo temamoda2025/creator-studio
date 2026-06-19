@@ -16,6 +16,12 @@ const TONES = [
 ] as const;
 type Tone = (typeof TONES)[number];
 
+interface SlideItem {
+  slideNumber: number;
+  heading: string;
+  body: string;
+}
+
 interface ContentResult {
   adorar: {
     attention: string;
@@ -31,6 +37,7 @@ interface ContentResult {
   caption: string;
   psychologicalExplanation: string;
   cta: string;
+  slides?: SlideItem[];
 }
 
 const FORMAT_TO_IMAGE_ID: Record<Format, string> = {
@@ -128,7 +135,7 @@ function drawDesignPreview(
   ctx.fillText(brandName, PAD, H - PAD);
 }
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false);
 
   return (
@@ -140,7 +147,7 @@ function CopyButton({ text }: { text: string }) {
       }}
       className="text-xs text-black/40 hover:text-black transition-colors border border-black/15 px-3 py-1.5 rounded-full hover:border-black/40"
     >
-      {copied ? "Copied" : "Copy Caption"}
+      {copied ? "Copied" : label}
     </button>
   );
 }
@@ -651,7 +658,7 @@ export default function ContentGenerator({
                 <p className="text-xs uppercase tracking-[0.2em] text-black/30">
                   Caption — {format}
                 </p>
-                <CopyButton text={result.caption} />
+                <CopyButton text={result.caption} label="Copy Caption" />
               </div>
               <p className="text-sm text-black/80 leading-relaxed whitespace-pre-line">
                 {result.caption}
@@ -668,6 +675,46 @@ export default function ContentGenerator({
               )}
             </div>
           </div>
+
+          {/* Carousel Slides */}
+          {result.slides && result.slides.length > 0 && (
+            <div className="bg-white border border-black/10 p-8">
+              <p className="text-xs uppercase tracking-[0.2em] text-black/30 mb-5">
+                Carousel Slides
+              </p>
+              <div className="space-y-3">
+                {result.slides.map((slide) => (
+                  <div
+                    key={slide.slideNumber}
+                    className="border border-black/10 p-5 flex gap-5 items-start"
+                  >
+                    <span className="shrink-0 text-2xl font-semibold text-black/10 w-7 leading-none pt-0.5">
+                      {slide.slideNumber}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] uppercase tracking-wider text-black/35 mb-1">
+                        {slide.slideNumber === 1
+                          ? "Hook"
+                          : slide.slideNumber === 5
+                          ? "CTA"
+                          : `Value ${slide.slideNumber - 1}`}
+                      </p>
+                      <p className="text-xs font-semibold text-black/55 mb-1.5">
+                        {slide.heading}
+                      </p>
+                      <p className="text-sm text-black/80 leading-relaxed">
+                        {slide.body}
+                      </p>
+                    </div>
+                    <CopyButton
+                      text={`${slide.heading}\n\n${slide.body}`}
+                      label="Copy Slide"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ADORAR Analysis */}
           <div className="bg-white border border-black/10 p-8">

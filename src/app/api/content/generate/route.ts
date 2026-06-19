@@ -76,8 +76,13 @@ You return structured JSON only. No markdown fences. No explanation. No preamble
   "visualDirection": "Specific visual art direction — mood, composition, colour palette, styling, what to show, what to avoid",
   "caption": "The full ready-to-post caption — opening hook, body, and CTA — written in the brand's voice, optimised for the specified format",
   "psychologicalExplanation": "The psychological mechanics at work in this caption — why each choice was made, which frameworks were applied, what objections were pre-handled",
-  "cta": "The standalone call-to-action — single sentence, specific, low-friction, matching the format"
-}`;
+  "cta": "The standalone call-to-action — single sentence, specific, low-friction, matching the format",
+  "slides": [
+    { "slideNumber": 1, "heading": "2–5 word slide title", "body": "slide copy — 1–3 sentences" }
+  ]
+}
+
+Note: "slides" is ONLY included when the format is Carousel. Omit the field entirely for all other formats.`;
 
 export async function POST(request: Request) {
   try {
@@ -157,7 +162,13 @@ ${selectedToneGuidance}${voiceSection}
 5. Explain the psychological mechanics — why each creative choice was made, which of your trained frameworks are at work, what the audience's psychological journey is through this piece.
 
 6. Write the standalone CTA.
-
+${format === "Carousel" ? `
+7. Since this is a Carousel, generate the "slides" array with exactly 5 entries:
+   - Slide 1 — Hook: A scroll-stopping opening line that creates an irresistible open loop. Must compel the viewer to swipe.
+   - Slides 2–4 — Value: One punchy, self-contained line per slide that progressively delivers on the hook's promise. Each must feel like a revelation.
+   - Slide 5 — CTA: A single action line, specific and low-friction, matching the emotional state the carousel has built.
+   "heading" = 2–5 word slide title (e.g. "The Real Problem", "Nobody Tells You This"). "body" = the actual slide copy (1–3 sentences max). Write in brand voice throughout.${hasImage ? " Reference the image if relevant." : ""}
+` : ""}
 ## Voice Calibration
 
 Write the caption for ${brandName}. The brand voice should feel authentic to who ${brandName} is — not generic, not over-produced, not like a template. Every brand has a frequency; find theirs and write at it.
@@ -186,7 +197,7 @@ Return ONLY the raw JSON object. No markdown. No code fences. No preamble.`;
 
     const response = await client.messages.create({
       model: "claude-opus-4-8",
-      max_tokens: 4096,
+      max_tokens: 6000,
       thinking: { type: "adaptive" },
       system: [
         {
