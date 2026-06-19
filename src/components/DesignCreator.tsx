@@ -122,10 +122,10 @@ function hex2rgba(hex: string, a: number): string {
 
 function drawBoldHeadline(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, brandName: string, caption: string
+  textColor: string, caption: string
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.08);
-  const { fontSize, lines } = fitText(ctx, caption, W - PAD * 2, H - PAD * 2.5, 120, 28, 700, "-2px", 1.2);
+  const { fontSize, lines } = fitText(ctx, caption, W - PAD * 2, H - PAD * 2, 120, 28, 700, "-2px", 1.2);
   setFont(ctx, fontSize, 700, "-2px");
   const lh = fontSize * 1.2;
   ctx.fillStyle = textColor;
@@ -133,18 +133,11 @@ function drawBoldHeadline(
   ctx.textBaseline = "top";
   const startY = (H - lines.length * lh) / 2;
   lines.forEach((l, i) => ctx.fillText(l, W / 2, startY + i * lh));
-
-  const brandSize = Math.max(14, Math.round(W * 0.026));
-  setFont(ctx, brandSize, 300, "5px");
-  ctx.fillStyle = hex2rgba(textColor, 0.35);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "bottom";
-  ctx.fillText(brandName.toUpperCase(), PAD, H - PAD);
 }
 
 function drawMinimalQuote(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, handle: string, caption: string
+  textColor: string, caption: string
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.1);
   const quoteSize = Math.round(W * 0.18);
@@ -152,9 +145,9 @@ function drawMinimalQuote(
   ctx.fillStyle = hex2rgba(textColor, 0.1);
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.fillText("“", PAD * 0.5, -PAD * 0.25);
+  ctx.fillText("\u201C", PAD * 0.5, -PAD * 0.25);
 
-  const { fontSize, lines } = fitText(ctx, caption, W - PAD * 2.5, H - PAD * 3.5, 68, 20, 300, "0.5px", 1.6);
+  const { fontSize, lines } = fitText(ctx, caption, W - PAD * 2.5, H - PAD * 2.5, 68, 20, 300, "0.5px", 1.6);
   setFont(ctx, fontSize, 300, "0.5px");
   const lh = fontSize * 1.6;
   const startY = (H - lines.length * lh) / 2;
@@ -162,38 +155,19 @@ function drawMinimalQuote(
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   lines.forEach((l, i) => ctx.fillText(l, PAD * 1.5, startY + i * lh));
-
-  const handleSize = Math.max(12, Math.round(W * 0.022));
-  setFont(ctx, handleSize, 300, "4px");
-  ctx.fillStyle = hex2rgba(textColor, 0.35);
-  ctx.textAlign = "right";
-  ctx.textBaseline = "bottom";
-  ctx.fillText(handle.toUpperCase(), W - PAD, H - PAD);
 }
-
 function drawSplitLayout(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, brandName: string, handle: string, caption: string
+  textColor: string, caption: string
 ) {
   const isLandscape = W > H;
   const PAD = Math.round(Math.min(W, H) * 0.07);
 
   if (isLandscape) {
-    const splitX = Math.round(W * 0.38);
+    const splitX = Math.round(W * 0.12);
     ctx.strokeStyle = hex2rgba(textColor, 0.2);
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(splitX, PAD); ctx.lineTo(splitX, H - PAD); ctx.stroke();
-
-    setFont(ctx, Math.max(14, Math.round(H * 0.12)), 700, "-1px");
-    ctx.fillStyle = textColor;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(brandName.toUpperCase(), splitX / 2, H / 2 - Math.round(H * 0.07));
-
-    setFont(ctx, Math.max(10, Math.round(H * 0.05)), 300, "4px");
-    ctx.fillStyle = hex2rgba(textColor, 0.4);
-    ctx.textBaseline = "middle";
-    ctx.fillText(handle.toUpperCase(), splitX / 2, H / 2 + Math.round(H * 0.06));
 
     const cX = splitX + PAD;
     const { fontSize, lines } = fitText(ctx, caption, W - splitX - PAD * 1.5, H - PAD * 2, 64, 18, 500, "-0.5px", 1.3);
@@ -205,21 +179,10 @@ function drawSplitLayout(
     ctx.textBaseline = "top";
     lines.forEach((l, i) => ctx.fillText(l, cX, startY + i * lh));
   } else {
-    const splitY = Math.round(H * 0.34);
+    const splitY = Math.round(H * 0.12);
     ctx.strokeStyle = hex2rgba(textColor, 0.2);
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(PAD, splitY); ctx.lineTo(W - PAD, splitY); ctx.stroke();
-
-    setFont(ctx, Math.max(14, Math.round(W * 0.09)), 700, "-1px");
-    ctx.fillStyle = textColor;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillText(brandName.toUpperCase(), PAD, splitY * 0.38);
-
-    setFont(ctx, Math.max(10, Math.round(W * 0.038)), 300, "4px");
-    ctx.fillStyle = hex2rgba(textColor, 0.4);
-    ctx.textBaseline = "middle";
-    ctx.fillText(handle.toUpperCase(), PAD, splitY * 0.65);
 
     const cY = splitY + PAD;
     const cH = H - splitY - PAD * 1.5;
@@ -236,36 +199,24 @@ function drawSplitLayout(
 
 function drawFullBleed(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, brandName: string, handle: string, caption: string
+  textColor: string, caption: string
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.07);
-  const bandH = Math.round(H * 0.48);
+  const bandH = Math.round(H * 0.55);
   const grad = ctx.createLinearGradient(0, H - bandH * 1.6, 0, H);
   grad.addColorStop(0, "rgba(0,0,0,0)");
-  grad.addColorStop(1, "rgba(0,0,0,0.8)");
+  grad.addColorStop(1, "rgba(0,0,0,0.85)");
   ctx.fillStyle = grad;
   ctx.fillRect(0, H - bandH * 1.6, W, bandH * 1.6);
 
-  setFont(ctx, Math.max(12, Math.round(W * 0.028)), 300, "6px");
-  ctx.fillStyle = hex2rgba(textColor, 0.7);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillText(brandName.toUpperCase(), PAD, PAD);
-
-  const { fontSize, lines } = fitText(ctx, caption, W - PAD * 2, bandH * 0.72, 80, 20, 600, "-0.5px", 1.25);
+  const { fontSize, lines } = fitText(ctx, caption, W - PAD * 2, bandH * 0.85, 80, 20, 600, "-0.5px", 1.25);
   setFont(ctx, fontSize, 600, "-0.5px");
   const lh = fontSize * 1.25;
   const startY = H - PAD - lines.length * lh;
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = textColor;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   lines.forEach((l, i) => ctx.fillText(l, PAD, startY + i * lh));
-
-  setFont(ctx, Math.max(10, Math.round(W * 0.02)), 300, "4px");
-  ctx.fillStyle = "rgba(255,255,255,0.45)";
-  ctx.textAlign = "right";
-  ctx.textBaseline = "bottom";
-  ctx.fillText(handle.toUpperCase(), W - PAD, H - Math.round(PAD * 0.4));
 }
 
 function drawTextOnly(
@@ -285,7 +236,7 @@ function drawTextOnly(
 
 function drawBrandedFrame(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, brandName: string, handle: string, caption: string
+  textColor: string, caption: string
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.07);
   const inner = Math.round(PAD * 0.65);
@@ -301,16 +252,10 @@ function drawBrandedFrame(
   ctx.beginPath(); ctx.moveTo(PAD, H - PAD - cornerLen); ctx.lineTo(PAD, H - PAD); ctx.lineTo(PAD + cornerLen, H - PAD); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(W - PAD - cornerLen, H - PAD); ctx.lineTo(W - PAD, H - PAD); ctx.lineTo(W - PAD, H - PAD - cornerLen); ctx.stroke();
 
-  setFont(ctx, Math.max(12, Math.round(W * 0.025)), 300, "6px");
-  ctx.fillStyle = hex2rgba(textColor, 0.5);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillText(brandName.toUpperCase(), PAD + inner, PAD + inner);
-
   const inX = PAD + inner;
-  const inY = PAD + inner + Math.round(W * 0.045);
+  const inY = PAD + inner;
   const inW = W - (PAD + inner) * 2;
-  const inH = H - inY - (PAD + inner) - Math.round(W * 0.04);
+  const inH = H - inY * 2;
   const { fontSize, lines } = fitText(ctx, caption, inW, inH, 80, 20, 500, "-0.5px", 1.3);
   setFont(ctx, fontSize, 500, "-0.5px");
   const lh = fontSize * 1.3;
@@ -319,12 +264,6 @@ function drawBrandedFrame(
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   lines.forEach((l, i) => ctx.fillText(l, inX, startY + i * lh));
-
-  setFont(ctx, Math.max(10, Math.round(W * 0.022)), 300, "4px");
-  ctx.fillStyle = hex2rgba(textColor, 0.35);
-  ctx.textAlign = "right";
-  ctx.textBaseline = "bottom";
-  ctx.fillText(handle.toUpperCase(), W - PAD - inner, H - PAD - inner);
 }
 
 // ─── Main draw orchestrator ───────────────────────────────────────────────────
@@ -344,7 +283,7 @@ function draw(
   ctx: CanvasRenderingContext2D,
   W: number, H: number,
   bgColor: string, textColor: string,
-  brandName: string, handle: string, caption: string,
+  caption: string,
   opts: DrawOptions
 ) {
   const { template, bgImage, overlayOpacity, logo, logoPosition,
@@ -378,12 +317,12 @@ function draw(
   }
 
   switch (template) {
-    case "bold-headline":  drawBoldHeadline(ctx, W, H, textColor, brandName, caption); break;
-    case "minimal-quote":  drawMinimalQuote(ctx, W, H, textColor, handle, caption); break;
-    case "split-layout":   drawSplitLayout(ctx, W, H, textColor, brandName, handle, caption); break;
-    case "full-bleed":     drawFullBleed(ctx, W, H, textColor, brandName, handle, caption); break;
+    case "bold-headline":  drawBoldHeadline(ctx, W, H, textColor, caption); break;
+    case "minimal-quote":  drawMinimalQuote(ctx, W, H, textColor, caption); break;
+    case "split-layout":   drawSplitLayout(ctx, W, H, textColor, caption); break;
+    case "full-bleed":     drawFullBleed(ctx, W, H, textColor, caption); break;
     case "text-only":      drawTextOnly(ctx, W, H, textColor, caption); break;
-    case "branded-frame":  drawBrandedFrame(ctx, W, H, textColor, brandName, handle, caption); break;
+    case "branded-frame":  drawBrandedFrame(ctx, W, H, textColor, caption); break;
   }
 
   // Always reset shadow so it doesn't bleed into logo / next draw
@@ -433,7 +372,7 @@ function TemplateThumbnail({
       if (!ctx) return;
       canvas.width = THUMB_PX;
       canvas.height = THUMB_PX;
-      draw(ctx, THUMB_PX, THUMB_PX, bgColor, textColor, "BRAND", "@brand",
+      draw(ctx, THUMB_PX, THUMB_PX, bgColor, textColor,
         "Preview headline text for layout", {
           template: id, bgImage: null, overlayOpacity: 0,
           logo: null, logoPosition: "top-right", fontFamily,
@@ -495,6 +434,8 @@ const MAX_PREVIEW  = 500;
 const MAX_SLIDES   = 10;
 const BLANK_CAPTION = "Paste your ADORAR™ generated caption here — or write a headline for your design.";
 
+interface Slide { text: string; color: string }
+
 export interface DesignSeed {
   imageDataUrl: string;
   caption: string;
@@ -537,7 +478,7 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   const [aiError,        setAiError]        = useState<string | null>(null);
 
   // Carousel slides
-  const [slides,         setSlides]         = useState<string[]>([BLANK_CAPTION]);
+  const [slides,         setSlides]         = useState<Slide[]>([{ text: BLANK_CAPTION, color: "#ffffff" }]);
   const [activeSlide,    setActiveSlide]    = useState(0);
   const [downloading,    setDownloading]    = useState(false);
 
@@ -554,7 +495,8 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
       ? activeBrand.handle.replace(/^@+/, "")
       : brandName.toLowerCase().replace(/\s+/g, "");
   const handle       = `@${rawHandle}`;
-  const activeCaption = isCarousel ? (slides[activeSlide] ?? "") : caption;
+  const activeCaption   = isCarousel ? (slides[activeSlide]?.text ?? "") : caption;
+  const activeTextColor = isCarousel ? (slides[activeSlide]?.color ?? textColor) : textColor;
 
   // Keep captionRef in sync for the format-switch initialiser below
   useEffect(() => { captionRef.current = caption; }, [caption]);
@@ -562,7 +504,7 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   // When switching TO carousel, seed slide 1 with whatever is in the caption box
   useEffect(() => {
     if (isCarousel) {
-      setSlides([captionRef.current]);
+      setSlides([{ text: captionRef.current, color: textColor }]);
       setActiveSlide(0);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -708,8 +650,8 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   // Carousel slide management
   const addSlide = () => {
     if (slides.length >= MAX_SLIDES) return;
-    setSlides(prev => [...prev, ""]);
-    setActiveSlide(slides.length); // new slide index
+    setSlides(prev => [...prev, { text: "", color: textColor }]);
+    setActiveSlide(slides.length);
   };
 
   const removeSlide = (i: number) => {
@@ -719,7 +661,11 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   };
 
   const updateSlide = (i: number, text: string) => {
-    setSlides(prev => prev.map((s, idx) => idx === i ? text : s));
+    setSlides(prev => prev.map((s, idx) => idx === i ? { ...s, text } : s));
+  };
+
+  const updateSlideColor = (i: number, color: string) => {
+    setSlides(prev => prev.map((s, idx) => idx === i ? { ...s, color } : s));
   };
 
   // ── Canvas rendering ─────────────────────────────────────────────────────────
@@ -738,10 +684,10 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
       if (!ctx) return;
       canvas.width  = fmt.w;
       canvas.height = fmt.h;
-      draw(ctx, fmt.w, fmt.h, bgColor, textColor, brandName, handle, activeCaption, opts);
+      draw(ctx, fmt.w, fmt.h, bgColor, activeTextColor, activeCaption, opts);
     };
     document.fonts.load(`500 1em "${fontFamily}"`).then(doRender, doRender);
-  }, [fmt, bgColor, textColor, brandName, handle, activeCaption,
+  }, [fmt, bgColor, activeTextColor, activeCaption,
       fontFamily, fontsReady, drawOpts]);
 
   useEffect(() => { redraw(); }, [redraw]);
@@ -772,7 +718,7 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
       if (!ctx) break;
       canvas.width  = fmt.w;
       canvas.height = fmt.h;
-      draw(ctx, fmt.w, fmt.h, bgColor, textColor, brandName, handle, slides[i], opts);
+      draw(ctx, fmt.w, fmt.h, bgColor, slides[i].color, slides[i].text, opts);
       const a = document.createElement("a");
       a.download = `${slug}-carousel-${String(i + 1).padStart(2, "0")}.png`;
       a.href = canvas.toDataURL("image/png");
@@ -1086,7 +1032,7 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
                   ←
                 </button>
                 <textarea
-                  value={slides[activeSlide] ?? ""}
+                  value={slides[activeSlide]?.text ?? ""}
                   onChange={(e) => updateSlide(activeSlide, e.target.value)}
                   rows={9}
                   placeholder="Slide text…"
@@ -1100,6 +1046,15 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
                 >
                   →
                 </button>
+              </div>
+
+              {/* Per-slide text colour */}
+              <div className="mt-3 pt-3 border-t border-black/8">
+                <ColourPicker
+                  label="Text colour"
+                  value={slides[activeSlide]?.color ?? textColor}
+                  onChange={(c) => updateSlideColor(activeSlide, c)}
+                />
               </div>
 
               {/* Dot indicators */}
@@ -1125,7 +1080,7 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
                 >
                   Delete slide
                 </button>
-                <span className="text-[10px] text-black/20">{(slides[activeSlide] ?? "").length} chars</span>
+                <span className="text-[10px] text-black/20">{(slides[activeSlide]?.text ?? "").length} chars</span>
                 <button
                   onClick={addSlide}
                   disabled={slides.length >= MAX_SLIDES}
@@ -1145,18 +1100,21 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
               <textarea
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
-                rows={11}
+                rows={10}
                 placeholder="Paste your ADORAR™ caption or write a headline…"
                 className="w-full border border-black/15 px-4 py-3 text-sm placeholder:text-black/25 focus:outline-none focus:border-black/40 transition-colors rounded-none bg-white resize-none leading-relaxed"
               />
               <p className="text-[11px] text-black/25 mt-1.5">{caption.length} chars</p>
+              <div className="mt-3 pt-3 border-t border-black/8">
+                <ColourPicker label="Text colour" value={textColor} onChange={setTextColor} />
+              </div>
             </div>
           )}
 
           {!activeBrand && (
             <div className="bg-zinc-50 border border-black/10 p-4">
               <p className="text-xs text-black/50 leading-relaxed">
-                No active brand — go to Brand Blueprint to create one. Your brand name and handle will appear on the design automatically.
+                No active brand — go to Brand Blueprint to create one. Your brand colours and fonts will load automatically.
               </p>
             </div>
           )}
