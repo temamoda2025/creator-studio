@@ -60,17 +60,53 @@ Rules:
 - Hooks written in first or second person
 - Ideas should cover different content pillars (education, social proof, behind the scenes, inspiration, etc.)`;
 
+const TOPIC_PROMPT = (
+  topic: string,
+  niche: string,
+  targetAudience: string,
+  positioning: string,
+  vanessa: boolean,
+) => {
+  const voiceBlock = vanessa
+    ? `Brand Voice: Vanessa Stoykov — bold, taboo-breaking finance educator. Brave, direct, confronting. Speaks to women in their 40s–60s navigating money and major life events.`
+    : `Brand: ${niche} brand.${positioning ? ` Positioning: ${positioning}.` : ""}${targetAudience ? ` Target Audience: ${targetAudience}.` : ""}`;
+
+  return `Generate 5 high-quality, specific social media content ideas on the topic of "${topic}".
+
+${voiceBlock}
+
+Return ONLY a raw JSON array — no markdown, no code fences, no preamble. Each item must match this exact shape:
+[
+  {
+    "pillar": "Content pillar name (2–4 words, specific to this topic)",
+    "format": "Carousel | Reel | Static Post | Story",
+    "hook": "The exact hook line — specific to "${topic}", scroll-stopping, in first or second person, ready to post as-is",
+    "effort": "Low | Medium | High"
+  }
+]
+
+Rules:
+- Return exactly 5 ideas, all specifically about "${topic}"
+- Every hook must directly reference or clearly relate to "${topic}" — no generic hooks
+- Mix formats: include at least 1 Carousel, 1 Reel, 1 Static Post
+- Mix effort: at least 1 Low, 1 Medium, 1 High
+- Cover different angles on the topic: education, myth-busting, personal story, how-to, social proof`;
+};
+
 export async function POST(request: Request) {
   try {
-    const { niche, targetAudience, positioning, brandName } = await request.json();
+    const { niche, targetAudience, positioning, brandName, topic } = await request.json();
 
     if (!niche) {
       return Response.json({ error: "niche is required" }, { status: 400 });
     }
 
-    const userMessage = isVanessaStoykov(brandName ?? "", niche)
-      ? VANESSA_PROMPT
-      : GENERIC_PROMPT(niche, targetAudience, positioning);
+    const vanessa = isVanessaStoykov(brandName ?? "", niche);
+    const userMessage = topic
+      ? TOPIC_PROMPT(topic, niche, targetAudience, positioning, vanessa)
+      : vanessa
+        ? VANESSA_PROMPT
+        : GENERIC_PROMPT(niche, targetAudience, positioning);
 
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",

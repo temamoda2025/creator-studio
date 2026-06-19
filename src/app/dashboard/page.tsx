@@ -278,6 +278,74 @@ function IdeasSkeleton() {
   );
 }
 
+function IdeaGrid({
+  ideas, addingIdea, setAddingIdea, weekDays, addToCalendar,
+}: {
+  ideas: Idea[];
+  addingIdea: string | null;
+  setAddingIdea: (v: string | null) => void;
+  weekDays: WeekDay[];
+  addToCalendar: (dateKey: string, post: string) => void;
+}) {
+  if (ideas.length === 0) return null;
+  return (
+    <div className="grid sm:grid-cols-2 gap-4">
+      {ideas.map(({ pillar, format, hook, effort }) => (
+        <div key={hook} className="border border-black/10 p-5 hover:border-black/30 transition-colors">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs text-black/40">{pillar}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs border border-black/15 px-2 py-0.5 rounded-full">{format}</span>
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full ${
+                  effort === "Low"
+                    ? "bg-emerald-50 text-emerald-700"
+                    : effort === "Medium"
+                    ? "bg-amber-50 text-amber-700"
+                    : "bg-red-50 text-red-700"
+                }`}
+              >
+                {effort}
+              </span>
+            </div>
+          </div>
+          <p className="text-sm font-medium leading-snug">{hook}</p>
+          {addingIdea === hook ? (
+            <div className="mt-3 pt-3 border-t border-black/8">
+              <p className="text-[11px] text-black/40 mb-2">Pick a day:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {weekDays.map(({ key, day, dateNum, dateObj }) => (
+                  <button
+                    key={key}
+                    onClick={() => addToCalendar(key, hook.replace(/^"|"$/g, ""))}
+                    className="text-[11px] px-2 py-1 border border-black/15 hover:border-black hover:bg-black hover:text-white transition-colors rounded"
+                    title={dateObj.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "short" })}
+                  >
+                    {day} {dateNum}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setAddingIdea(null)}
+                  className="text-[11px] px-2 py-1 text-black/30 hover:text-black transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAddingIdea(hook)}
+              className="mt-3 text-xs text-black/30 hover:text-black transition-colors"
+            >
+              Add to calendar →
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ErrorBanner({ message }: { message: string }) {
   return (
     <div className="bg-red-50 border border-red-200 px-5 py-3 text-xs text-red-600 rounded">
@@ -318,6 +386,12 @@ export default function DashboardPage() {
   const [ideasLoading, setIdeasLoading] = useState(false);
   const ideasCacheRef = useRef<Map<string, Idea[]>>(new Map());
 
+  // Topic search
+  const [topicInput,   setTopicInput]   = useState("");
+  const [topicIdeas,   setTopicIdeas]   = useState<Idea[]>([]);
+  const [topicLoading, setTopicLoading] = useState(false);
+  const [currentTopic, setCurrentTopic] = useState<string | null>(null);
+
   // Calendar
   const [today,        setToday]       = useState<Date | null>(null);
   const [calendarData, setCalendarData] = useState<CalendarData>({});
@@ -343,6 +417,13 @@ export default function DashboardPage() {
     if (!activeBrand) { setCalendarData({}); return; }
     setCalendarData(loadCalendar(activeBrand.id));
     setAddingIdea(null);
+  }, [activeBrand]);
+
+  // Clear topic search on brand switch
+  useEffect(() => {
+    setTopicIdeas([]);
+    setCurrentTopic(null);
+    setTopicInput("");
   }, [activeBrand]);
 
   // Fetch brand-specific content ideas (Claude Haiku, cached per brand)
@@ -380,6 +461,31 @@ export default function DashboardPage() {
     if (!activeBrand) { setIdeas([]); return; }
     return fetchIdeas(activeBrand);
   }, [activeBrand, fetchIdeas]);
+
+  const fetchTopicIdeas = useCallback((topic: string) => {
+    if (!activeBrand || !topic.trim()) return;
+    setTopicLoading(true);
+    fetch("/api/ideas/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        brandName: activeBrand.name,
+        niche: activeBrand.niche,
+        targetAudience: activeBrand.targetAudience,
+        positioning: activeBrand.positioning ?? null,
+        topic: topic.trim(),
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setTopicIdeas(data);
+          setCurrentTopic(topic.trim());
+        }
+      })
+      .catch(() => {})
+      .finally(() => setTopicLoading(false));
+  }, [activeBrand]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -668,65 +774,52 @@ export default function DashboardPage() {
                         </button>
                       </div>
                     </div>
-                    {ideasLoading ? <IdeasSkeleton /> : (
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      {ideas.map(({ pillar, format, hook, effort }) => (
-                        <div key={hook} className="border border-black/10 p-5 hover:border-black/30 transition-colors">
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-xs text-black/40">{pillar}</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs border border-black/15 px-2 py-0.5 rounded-full">
-                                {format}
-                              </span>
-                              <span
-                                className={`text-xs px-2 py-0.5 rounded-full ${
-                                  effort === "Low"
-                                    ? "bg-emerald-50 text-emerald-700"
-                                    : effort === "Medium"
-                                    ? "bg-amber-50 text-amber-700"
-                                    : "bg-red-50 text-red-700"
-                                }`}
-                              >
-                                {effort}
-                              </span>
-                            </div>
-                          </div>
-                          <p className="text-sm font-medium leading-snug">{hook}</p>
 
-                          {/* Add to calendar UI */}
-                          {addingIdea === hook ? (
-                            <div className="mt-3 pt-3 border-t border-black/8">
-                              <p className="text-[11px] text-black/40 mb-2">Pick a day:</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {weekDays.map(({ key, day, dateNum, dateObj }) => (
-                                  <button
-                                    key={key}
-                                    onClick={() => addToCalendar(key, hook.replace(/^"|"$/g, ""))}
-                                    className="text-[11px] px-2 py-1 border border-black/15 hover:border-black hover:bg-black hover:text-white transition-colors rounded"
-                                    title={dateObj.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "short" })}
-                                  >
-                                    {day} {dateNum}
-                                  </button>
-                                ))}
-                                <button
-                                  onClick={() => setAddingIdea(null)}
-                                  className="text-[11px] px-2 py-1 text-black/30 hover:text-black transition-colors"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setAddingIdea(hook)}
-                              className="mt-3 text-xs text-black/30 hover:text-black transition-colors"
-                            >
-                              Add to calendar →
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                    {/* Topic search */}
+                    <div className="flex gap-2 mb-8">
+                      <input
+                        type="text"
+                        value={topicInput}
+                        onChange={(e) => setTopicInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !topicLoading) fetchTopicIdeas(topicInput); }}
+                        placeholder="Search a topic — e.g. prenup, wedding transport, luxury wardrobe…"
+                        className="flex-1 border border-black/15 px-4 py-2.5 text-sm placeholder:text-black/25 focus:outline-none focus:border-black/40 transition-colors bg-white"
+                      />
+                      <button
+                        onClick={() => fetchTopicIdeas(topicInput)}
+                        disabled={!topicInput.trim() || topicLoading}
+                        className="shrink-0 text-sm bg-black text-white px-5 py-2.5 hover:bg-black/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                      >
+                        {topicLoading ? "Generating…" : "Generate Ideas"}
+                      </button>
                     </div>
+
+                    {/* Topic results */}
+                    {topicIdeas.length > 0 && currentTopic && (
+                      <>
+                        <div className="flex items-center justify-between mb-4">
+                          <p className="text-xs uppercase tracking-[0.15em] text-black/40">
+                            Ideas for:{" "}
+                            <span className="text-black font-medium normal-case tracking-normal">{currentTopic}</span>
+                          </p>
+                          <button
+                            onClick={() => { setTopicIdeas([]); setCurrentTopic(null); setTopicInput(""); }}
+                            className="text-xs text-black/25 hover:text-black transition-colors"
+                          >
+                            Clear ×
+                          </button>
+                        </div>
+                        <IdeaGrid ideas={topicIdeas} addingIdea={addingIdea} setAddingIdea={setAddingIdea} weekDays={weekDays} addToCalendar={addToCalendar} />
+                        <div className="border-t border-black/8 my-8" />
+                      </>
+                    )}
+
+                    {/* Suggested ideas */}
+                    {topicIdeas.length > 0 && (
+                      <p className="text-xs uppercase tracking-[0.15em] text-black/40 mb-4">Suggested Ideas</p>
+                    )}
+                    {ideasLoading ? <IdeasSkeleton /> : (
+                      <IdeaGrid ideas={ideas} addingIdea={addingIdea} setAddingIdea={setAddingIdea} weekDays={weekDays} addToCalendar={addToCalendar} />
                     )}
                   </div>
 
