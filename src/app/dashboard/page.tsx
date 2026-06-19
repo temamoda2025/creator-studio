@@ -355,6 +355,7 @@ export default function DashboardPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        brandName: brand.name,
         niche: brand.niche,
         targetAudience: brand.targetAudience,
         positioning: brand.positioning ?? null,
