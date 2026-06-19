@@ -118,26 +118,78 @@ function hex2rgba(hex: string, a: number): string {
   return `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${a})`;
 }
 
+interface TextBgOpts {
+  enabled: boolean;
+  color: string;
+  opacity: number; // 0–100
+}
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawLines(
+  ctx: CanvasRenderingContext2D,
+  lines: string[],
+  x: number,
+  startY: number,
+  lh: number,
+  align: "left" | "center",
+  textColor: string,
+  textBg: TextBgOpts,
+  fontSize: number,
+) {
+  lines.forEach((l, i) => {
+    const y = startY + i * lh;
+    if (textBg.enabled && l.trim()) {
+      const tw = ctx.measureText(l).width;
+      const padH = Math.max(8, fontSize * 0.25);
+      const padV = Math.max(4, fontSize * 0.15);
+      const radius = Math.max(4, fontSize * 0.2);
+      const rx = align === "center" ? x - tw / 2 - padH : x - padH;
+      const ry = y - padV;
+      // Save & clear shadow so it doesn't apply to the background rect
+      const sv = { sc: ctx.shadowColor, sb: ctx.shadowBlur, sx: ctx.shadowOffsetX, sy: ctx.shadowOffsetY };
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+      ctx.fillStyle = hex2rgba(textBg.color, textBg.opacity / 100);
+      roundRect(ctx, rx, ry, tw + padH * 2, fontSize + padV * 2, radius);
+      ctx.fill();
+      ctx.shadowColor = sv.sc; ctx.shadowBlur = sv.sb; ctx.shadowOffsetX = sv.sx; ctx.shadowOffsetY = sv.sy;
+    }
+    ctx.fillStyle = textColor;
+    ctx.fillText(l, x, y);
+  });
+}
+
 // ─── Template draw functions ──────────────────────────────────────────────────
 
 function drawBoldHeadline(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, caption: string
+  textColor: string, caption: string, textBg: TextBgOpts
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.08);
   const { fontSize, lines } = fitText(ctx, caption, W - PAD * 2, H - PAD * 2, 120, 28, 700, "-2px", 1.2);
   setFont(ctx, fontSize, 700, "-2px");
   const lh = fontSize * 1.2;
-  ctx.fillStyle = textColor;
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   const startY = (H - lines.length * lh) / 2;
-  lines.forEach((l, i) => ctx.fillText(l, W / 2, startY + i * lh));
+  drawLines(ctx, lines, W / 2, startY, lh, "center", textColor, textBg, fontSize);
 }
 
 function drawMinimalQuote(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, caption: string
+  textColor: string, caption: string, textBg: TextBgOpts
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.1);
   const quoteSize = Math.round(W * 0.18);
@@ -151,14 +203,13 @@ function drawMinimalQuote(
   setFont(ctx, fontSize, 300, "0.5px");
   const lh = fontSize * 1.6;
   const startY = (H - lines.length * lh) / 2;
-  ctx.fillStyle = textColor;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  lines.forEach((l, i) => ctx.fillText(l, PAD * 1.5, startY + i * lh));
+  drawLines(ctx, lines, PAD * 1.5, startY, lh, "left", textColor, textBg, fontSize);
 }
 function drawSplitLayout(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, caption: string
+  textColor: string, caption: string, textBg: TextBgOpts
 ) {
   const isLandscape = W > H;
   const PAD = Math.round(Math.min(W, H) * 0.07);
@@ -174,10 +225,9 @@ function drawSplitLayout(
     setFont(ctx, fontSize, 500, "-0.5px");
     const lh = fontSize * 1.3;
     const startY = (H - lines.length * lh) / 2;
-    ctx.fillStyle = textColor;
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    lines.forEach((l, i) => ctx.fillText(l, cX, startY + i * lh));
+    drawLines(ctx, lines, cX, startY, lh, "left", textColor, textBg, fontSize);
   } else {
     const splitY = Math.round(H * 0.12);
     ctx.strokeStyle = hex2rgba(textColor, 0.2);
@@ -190,16 +240,15 @@ function drawSplitLayout(
     setFont(ctx, fontSize, 500, "-0.5px");
     const lh = fontSize * 1.3;
     const startY = cY + (cH - lines.length * lh) / 2;
-    ctx.fillStyle = textColor;
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    lines.forEach((l, i) => ctx.fillText(l, PAD, startY + i * lh));
+    drawLines(ctx, lines, PAD, startY, lh, "left", textColor, textBg, fontSize);
   }
 }
 
 function drawFullBleed(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, caption: string
+  textColor: string, caption: string, textBg: TextBgOpts
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.07);
   const bandH = Math.round(H * 0.55);
@@ -213,30 +262,28 @@ function drawFullBleed(
   setFont(ctx, fontSize, 600, "-0.5px");
   const lh = fontSize * 1.25;
   const startY = H - PAD - lines.length * lh;
-  ctx.fillStyle = textColor;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  lines.forEach((l, i) => ctx.fillText(l, PAD, startY + i * lh));
+  drawLines(ctx, lines, PAD, startY, lh, "left", textColor, textBg, fontSize);
 }
 
 function drawTextOnly(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, caption: string
+  textColor: string, caption: string, textBg: TextBgOpts
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.1);
   const { fontSize, lines } = fitText(ctx, caption, W - PAD * 2, H - PAD * 2, 100, 20, 500, "-0.5px", 1.3);
   setFont(ctx, fontSize, 500, "-0.5px");
   const lh = fontSize * 1.3;
   const startY = (H - lines.length * lh) / 2;
-  ctx.fillStyle = textColor;
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  lines.forEach((l, i) => ctx.fillText(l, W / 2, startY + i * lh));
+  drawLines(ctx, lines, W / 2, startY, lh, "center", textColor, textBg, fontSize);
 }
 
 function drawBrandedFrame(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, caption: string
+  textColor: string, caption: string, textBg: TextBgOpts
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.07);
   const inner = Math.round(PAD * 0.65);
@@ -260,10 +307,9 @@ function drawBrandedFrame(
   setFont(ctx, fontSize, 500, "-0.5px");
   const lh = fontSize * 1.3;
   const startY = inY + (inH - lines.length * lh) / 2;
-  ctx.fillStyle = textColor;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  lines.forEach((l, i) => ctx.fillText(l, inX, startY + i * lh));
+  drawLines(ctx, lines, inX, startY, lh, "left", textColor, textBg, fontSize);
 }
 
 // ─── Main draw orchestrator ───────────────────────────────────────────────────
@@ -277,6 +323,7 @@ interface DrawOptions {
   fontFamily: string;
   shadowColor: string;
   shadowEnabled: boolean;
+  textBg: TextBgOpts;
 }
 
 function draw(
@@ -287,7 +334,7 @@ function draw(
   opts: DrawOptions
 ) {
   const { template, bgImage, overlayOpacity, logo, logoPosition,
-          fontFamily, shadowColor, shadowEnabled } = opts;
+          fontFamily, shadowColor, shadowEnabled, textBg } = opts;
   const PAD = Math.round(Math.min(W, H) * 0.07);
 
   _fontStack = `"${fontFamily}", ${FALLBACK}`;
@@ -317,12 +364,12 @@ function draw(
   }
 
   switch (template) {
-    case "bold-headline":  drawBoldHeadline(ctx, W, H, textColor, caption); break;
-    case "minimal-quote":  drawMinimalQuote(ctx, W, H, textColor, caption); break;
-    case "split-layout":   drawSplitLayout(ctx, W, H, textColor, caption); break;
-    case "full-bleed":     drawFullBleed(ctx, W, H, textColor, caption); break;
-    case "text-only":      drawTextOnly(ctx, W, H, textColor, caption); break;
-    case "branded-frame":  drawBrandedFrame(ctx, W, H, textColor, caption); break;
+    case "bold-headline":  drawBoldHeadline(ctx, W, H, textColor, caption, textBg); break;
+    case "minimal-quote":  drawMinimalQuote(ctx, W, H, textColor, caption, textBg); break;
+    case "split-layout":   drawSplitLayout(ctx, W, H, textColor, caption, textBg); break;
+    case "full-bleed":     drawFullBleed(ctx, W, H, textColor, caption, textBg); break;
+    case "text-only":      drawTextOnly(ctx, W, H, textColor, caption, textBg); break;
+    case "branded-frame":  drawBrandedFrame(ctx, W, H, textColor, caption, textBg); break;
   }
 
   // Always reset shadow so it doesn't bleed into logo / next draw
@@ -377,6 +424,7 @@ function TemplateThumbnail({
           template: id, bgImage: null, overlayOpacity: 0,
           logo: null, logoPosition: "top-right", fontFamily,
           shadowColor: "#000000", shadowEnabled: false,
+          textBg: { enabled: false, color: "#ffffff", opacity: 80 },
         });
     };
     document.fonts.load(`500 1em "${fontFamily}"`).then(doRender, doRender);
@@ -456,6 +504,9 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   const [textColor,      setTextColor]      = useState("#ffffff");
   const [shadowColor,    setShadowColor]    = useState("#000000");
   const [shadowEnabled,  setShadowEnabled]  = useState(false);
+  const [textBgEnabled,  setTextBgEnabled]  = useState(false);
+  const [textBgColor,    setTextBgColor]    = useState("#ffffff");
+  const [textBgOpacity,  setTextBgOpacity]  = useState(80);
   const [templateId,     setTemplateId]     = useState<TemplateId>("bold-headline");
   const [fontFamily,     setFontFamily]     = useState<string>(DEFAULT_FONT);
   const [fontsReady,     setFontsReady]     = useState(false);
@@ -673,7 +724,9 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
     template: templateId, bgImage: bgImg, overlayOpacity,
     logo: logoImg, logoPosition, fontFamily,
     shadowColor, shadowEnabled,
-  }), [templateId, bgImg, overlayOpacity, logoImg, logoPosition, fontFamily, shadowColor, shadowEnabled]);
+    textBg: { enabled: textBgEnabled, color: textBgColor, opacity: textBgOpacity },
+  }), [templateId, bgImg, overlayOpacity, logoImg, logoPosition, fontFamily,
+       shadowColor, shadowEnabled, textBgEnabled, textBgColor, textBgOpacity]);
 
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -792,7 +845,7 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
             </div>
           </div>
 
-          {/* Text colour + shadow */}
+          {/* Text colour + shadow + text background */}
           <div className="flex flex-wrap gap-6 items-start">
             <div>
               <label className="block text-xs text-black/40 uppercase tracking-wider mb-2.5">Text Colour</label>
@@ -816,6 +869,38 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
                 ? <ColourPicker label="shadow" value={shadowColor} onChange={setShadowColor} />
                 : <p className="text-[11px] text-black/25">Adds a soft drop shadow behind text for readability.</p>
               }
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-2.5">
+                <label className="text-xs text-black/40 uppercase tracking-wider">Text Background</label>
+                <button
+                  onClick={() => setTextBgEnabled(v => !v)}
+                  className={`text-[11px] px-2.5 py-0.5 rounded-full border transition-colors ${
+                    textBgEnabled
+                      ? "border-black bg-black text-white"
+                      : "border-black/20 text-black/40 hover:border-black/40"
+                  }`}
+                >
+                  {textBgEnabled ? "On" : "Off"}
+                </button>
+              </div>
+              {textBgEnabled ? (
+                <div className="space-y-2.5">
+                  <ColourPicker label="pill colour" value={textBgColor} onChange={setTextBgColor} />
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-black/40 shrink-0">Opacity</span>
+                    <input
+                      type="range" min={0} max={100} step={5}
+                      value={textBgOpacity}
+                      onChange={(e) => setTextBgOpacity(Number(e.target.value))}
+                      className="w-28 accent-black cursor-pointer"
+                    />
+                    <span className="text-[11px] text-black/35 w-8 text-right shrink-0">{textBgOpacity}%</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px] text-black/25">Draws a colour pill behind each line of text.</p>
+              )}
             </div>
           </div>
 
