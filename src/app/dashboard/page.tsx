@@ -5,6 +5,7 @@ import Nav from "@/components/Nav";
 import Link from "next/link";
 import ContentGenerator from "@/components/ContentGenerator";
 import ContentResearch from "@/components/ContentResearch";
+import TrendingAudio from "@/components/TrendingAudio";
 import CaptionHistory from "@/components/CaptionHistory";
 import ReelScriptGenerator from "@/components/ReelScriptGenerator";
 import DesignCreator, { type DesignSeed } from "@/components/DesignCreator";
@@ -356,11 +357,12 @@ function ErrorBanner({ message }: { message: string }) {
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "research" | "content-generator" | "reel-scripts" | "design-creator" | "history";
+type Tab = "overview" | "research" | "trending-audio" | "content-generator" | "reel-scripts" | "design-creator" | "history";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview",          label: "Overview"           },
   { id: "research",          label: "Content Research"   },
+  { id: "trending-audio",    label: "Trending Audio"     },
   { id: "content-generator", label: "Content Generator"  },
   { id: "reel-scripts",      label: "Reel Scripts"       },
   { id: "design-creator",    label: "Design Creator"     },
@@ -893,6 +895,9 @@ export default function DashboardPage() {
               }}
             />
           )}
+
+          {/* ── Trending Audio ── */}
+          {tab === "trending-audio" && <TrendingAudio />}
 
           {/* ── Content Generator ── */}
           {tab === "content-generator" && (
