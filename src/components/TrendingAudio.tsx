@@ -89,24 +89,27 @@ function AudioCard({ track }: { track: TrendingAudioItem }) {
 
 export default function TrendingAudio() {
   const { activeBrand } = useBrands();
-  const [audio,        setAudio]        = useState<TrendingAudioItem[]>([]);
-  const [loading,      setLoading]      = useState(false);
-  const [error,        setError]        = useState<string | null>(null);
-  const fetchedNicheRef = useRef<string | null>(null);
+  const [audio,         setAudio]        = useState<TrendingAudioItem[]>([]);
+  const [loading,       setLoading]      = useState(false);
+  const [error,         setError]        = useState<string | null>(null);
+  const [searchInput,   setSearchInput]  = useState("");
+  const [activeTerm,    setActiveTerm]   = useState<string | null>(null);
+  const fetchedTermRef = useRef<string | null>(null);
 
-  const fetchAudio = useCallback(async (niche: string) => {
+  const fetchAudio = useCallback(async (term: string) => {
     setLoading(true);
     setError(null);
     try {
       const res  = await fetch("/api/trending-audio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ niche }),
+        body: JSON.stringify({ niche: term }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       setAudio(json.audio ?? []);
-      fetchedNicheRef.current = niche;
+      setActiveTerm(term);
+      fetchedTermRef.current = term;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to fetch trending audio");
     } finally {
@@ -114,20 +117,23 @@ export default function TrendingAudio() {
     }
   }, []);
 
+  // Auto-fetch with niche when brand first loads / switches
   useEffect(() => {
     if (!activeBrand) return;
-    if (fetchedNicheRef.current === activeBrand.niche) return;
+    setSearchInput(activeBrand.niche);
+    setAudio([]);
+    setError(null);
+    setActiveTerm(null);
+    fetchedTermRef.current = null;
     fetchAudio(activeBrand.niche);
-  }, [activeBrand, fetchAudio]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBrand?.id]);
 
-  // Reset when brand changes to a different niche
-  useEffect(() => {
-    if (!activeBrand) {
-      setAudio([]);
-      setError(null);
-      fetchedNicheRef.current = null;
-    }
-  }, [activeBrand]);
+  const handleSearch = () => {
+    if (!searchInput.trim() || loading) return;
+    fetchedTermRef.current = null;
+    fetchAudio(searchInput.trim());
+  };
 
   if (!activeBrand) {
     return (
@@ -140,30 +146,31 @@ export default function TrendingAudio() {
   return (
     <div className="space-y-6">
       <div className="bg-white border border-black/10 p-8">
-        <div className="flex items-start justify-between mb-1">
-          <div>
-            <h2 className="text-base font-semibold">Trending Audio</h2>
-            <p className="text-xs text-black/35 mt-0.5">
-              Top sounds used in recent{" "}
-              <span className="text-black/60">{activeBrand.niche}</span>{" "}
-              content on TikTok &amp; Instagram Reels
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              fetchedNicheRef.current = null;
-              fetchAudio(activeBrand.niche);
-            }}
-            disabled={loading}
-            className="shrink-0 ml-6 text-xs border border-black/15 px-4 py-2 rounded-full hover:border-black/40 transition-colors disabled:opacity-40"
-          >
-            {loading ? "Fetching…" : "Refresh ↻"}
-          </button>
+        <div className="mb-6">
+          <h2 className="text-base font-semibold mb-0.5">Trending Audio</h2>
+          <p className="text-xs text-black/35">
+            Top sounds used in recent content on TikTok &amp; Instagram Reels
+          </p>
         </div>
 
-        <p className="text-[11px] text-black/25 mb-8 leading-relaxed">
-          Scraped live via Apify — this can take up to 60 seconds.
-        </p>
+        {/* Search bar */}
+        <div className="flex gap-2 mb-8">
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+            placeholder="Search a term — e.g. wedding entrance songs 2025, luxury car reels…"
+            className="flex-1 border border-black/15 px-4 py-2.5 text-sm placeholder:text-black/25 focus:outline-none focus:border-black/40 transition-colors bg-white"
+          />
+          <button
+            onClick={handleSearch}
+            disabled={!searchInput.trim() || loading}
+            className="shrink-0 text-sm bg-black text-white px-5 py-2.5 hover:bg-black/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+          >
+            {loading ? "Searching…" : "Search"}
+          </button>
+        </div>
 
         {error && (
           <div className="bg-red-50 border border-red-200 px-5 py-3 text-xs text-red-600 rounded mb-6">
@@ -176,16 +183,13 @@ export default function TrendingAudio() {
         ) : audio.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-sm text-black/35 mb-1">
-              No trending audio found for &ldquo;{activeBrand.niche}&rdquo;.
+              No trending audio found for &ldquo;{activeTerm ?? searchInput}&rdquo;.
             </p>
             <p className="text-xs text-black/25">
-              This can happen if recent posts in this niche don&rsquo;t carry music metadata, or the hashtag returned no Reels.
+              This can happen if recent posts don&rsquo;t carry music metadata, or the term returned no Reels.
             </p>
             <button
-              onClick={() => {
-                fetchedNicheRef.current = null;
-                fetchAudio(activeBrand.niche);
-              }}
+              onClick={handleSearch}
               className="mt-5 text-xs border border-black/15 px-5 py-2 rounded-full hover:border-black/40 transition-colors"
             >
               Try again
@@ -193,6 +197,12 @@ export default function TrendingAudio() {
           </div>
         ) : (
           <>
+            {activeTerm && (
+              <p className="text-xs uppercase tracking-[0.15em] text-black/40 mb-4">
+                Results for:{" "}
+                <span className="text-black font-medium normal-case tracking-normal">{activeTerm}</span>
+              </p>
+            )}
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {audio.map((track) => (
                 <AudioCard key={track.id} track={track} />
