@@ -1,137 +1,20 @@
 import { NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
 
-export const maxDuration = 120;
+export const maxDuration = 30;
 
-const APIFY_TOKEN = process.env.APIFY_API_TOKEN;
-const APIFY_BASE = "https://api.apify.com/v2";
+const client = new Anthropic();
 
 export interface TrendingAudio {
   id: string;
   title: string;
   artist: string;
-  platform: "instagram" | "tiktok" | "both";
-  usageCount: number;
-  exampleUrl: string;
-}
-
-type RawItem = Record<string, unknown>;
-
-async function runActor(actorId: string, input: Record<string, unknown>): Promise<RawItem[]> {
-  const url = `${APIFY_BASE}/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=110`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-    signal: AbortSignal.timeout(115_000),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`Apify ${actorId} → ${res.status}: ${text.slice(0, 200)}`);
-  }
-  return res.json();
-}
-
-function slugKey(title: string, artist: string): string {
-  return `${title.toLowerCase().trim()}|||${artist.toLowerCase().trim()}`;
-}
-
-async function tiktokAudio(niche: string): Promise<TrendingAudio[]> {
-  const hashtag = niche.toLowerCase().replace(/[\s&/\\]+/g, "");
-  const items = await runActor("clockworks~free-tiktok-scraper", {
-    hashtags: [`#${hashtag}`],
-    resultsPerPage: 35,
-  });
-
-  const map = new Map<string, { title: string; artist: string; count: number; url: string; original: boolean }>();
-
-  for (const item of items) {
-    const m = item.musicMeta as Record<string, unknown> | undefined;
-    if (!m) continue;
-    const id      = String(m.musicId ?? "");
-    const title   = String(m.musicName ?? "").trim();
-    const artist  = String(m.musicAuthor ?? "").trim();
-    const original = Boolean(m.musicOriginal);
-    const url     = String(item.webVideoUrl ?? "");
-    if (!id || !title) continue;
-
-    const existing = map.get(id);
-    if (existing) {
-      existing.count++;
-    } else {
-      map.set(id, { title, artist, count: 1, url, original });
-    }
-  }
-
-  return Array.from(map.values())
-    .map((d) => ({
-      id: `tt-${slugKey(d.title, d.artist)}`,
-      title: d.title,
-      artist: d.original ? "Original sound" : d.artist,
-      platform: "tiktok" as const,
-      usageCount: d.count,
-      exampleUrl: d.url,
-    }))
-    .sort((a, b) => b.usageCount - a.usageCount)
-    .slice(0, 12);
-}
-
-async function instagramAudio(niche: string): Promise<TrendingAudio[]> {
-  const hashtag = niche.toLowerCase().replace(/[\s&/\\]+/g, "");
-  const items = await runActor("apify~instagram-hashtag-scraper", {
-    hashtags: [hashtag],
-    resultsLimit: 35,
-  });
-
-  const map = new Map<string, { title: string; artist: string; count: number; url: string }>();
-
-  for (const item of items) {
-    const isVideo =
-      item.type === "Video" ||
-      item.productType === "clips" ||
-      item.mediaType === "VIDEO";
-    if (!isVideo) continue;
-
-    const music = (
-      item.musicInfo ?? item.clipsMusicAttributionInfo ?? item.music
-    ) as Record<string, unknown> | undefined;
-    if (!music) continue;
-
-    const id     = String(music.id ?? music.musicId ?? music.audioAssetId ?? "");
-    const title  = String(music.title ?? music.songName ?? music.name ?? music.audioAssetTitle ?? "").trim();
-    const artist = String(music.artist_name ?? music.artistName ?? music.author ?? music.byArtist ?? "").trim();
-    const url    = String(item.url ?? `https://www.instagram.com/p/${item.shortCode}/`);
-    if (!title) continue;
-
-    const key = id || slugKey(title, artist);
-    const existing = map.get(key);
-    if (existing) {
-      existing.count++;
-    } else {
-      map.set(key, { title, artist, count: 1, url });
-    }
-  }
-
-  return Array.from(map.values())
-    .map((d) => ({
-      id: `ig-${slugKey(d.title, d.artist)}`,
-      title: d.title,
-      artist: d.artist,
-      platform: "instagram" as const,
-      usageCount: d.count,
-      exampleUrl: d.url,
-    }))
-    .sort((a, b) => b.usageCount - a.usageCount)
-    .slice(0, 12);
+  genre: string;
+  whyItWorks: string;
+  contentStyle: string;
 }
 
 export async function POST(request: Request) {
-  if (!APIFY_TOKEN) {
-    return NextResponse.json(
-      { error: "APIFY_API_TOKEN is not configured." },
-      { status: 500 }
-    );
-  }
-
   let niche: string;
   try {
     ({ niche } = await request.json());
@@ -143,35 +26,61 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "niche is required" }, { status: 400 });
   }
 
-  const [ttResult, igResult] = await Promise.allSettled([
-    tiktokAudio(niche.trim()),
-    instagramAudio(niche.trim()),
-  ]);
+  const term = niche.trim();
 
-  if (ttResult.status === "rejected") console.error("TikTok audio error:", ttResult.reason);
-  if (igResult.status === "rejected") console.error("Instagram audio error:", igResult.reason);
+  const prompt = `You are a social media music curator. Generate 8 currently trending songs perfect for "${term}" content on TikTok and Instagram Reels.
 
-  const tiktok    = ttResult.status === "fulfilled" ? ttResult.value : [];
-  const instagram = igResult.status === "fulfilled" ? igResult.value : [];
-
-  // Merge: same song on both platforms → "both" + combined count
-  const merged = new Map<string, TrendingAudio>();
-  for (const track of tiktok) {
-    merged.set(slugKey(track.title, track.artist), track);
+Return ONLY a raw JSON array — no markdown fences, no explanation, no text before or after. Each item must have exactly these fields:
+[
+  {
+    "title": "Song title",
+    "artist": "Artist name",
+    "genre": "Genre (2-3 words, e.g. Ambient Pop, Phonk, Lo-fi Hip Hop)",
+    "whyItWorks": "One sentence explaining why this song resonates with ${term} content specifically",
+    "contentStyle": "Suggested reel style (2-5 words, e.g. slow motion entrance, transformation reel, behind the scenes)"
   }
-  for (const track of instagram) {
-    const key = slugKey(track.title, track.artist);
-    const existing = merged.get(key);
-    if (existing) {
-      merged.set(key, { ...existing, platform: "both", usageCount: existing.usageCount + track.usageCount });
-    } else {
-      merged.set(key, track);
-    }
+]
+
+Rules:
+- Return exactly 8 songs
+- Focus on songs that have been used in viral Reels and TikToks for this category
+- Mix of genres and energy levels
+- whyItWorks must reference "${term}" specifically — no generic phrases
+- contentStyle must be a specific, actionable format
+- Raw JSON only — no markdown, no code fences, no explanation`;
+
+  const response = await client.messages.create({
+    model: "claude-opus-4-8",
+    max_tokens: 1024,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const raw = response.content
+    .filter((b) => b.type === "text")
+    .map((b) => (b as { type: "text"; text: string }).text)
+    .join("");
+
+  const cleaned = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+
+  let songs: TrendingAudio[];
+  try {
+    const parsed = JSON.parse(cleaned);
+    songs = (Array.isArray(parsed) ? parsed : []).map(
+      (s: Record<string, string>, i: number) => ({
+        id: `audio-${i}-${Date.now()}`,
+        title: String(s.title ?? ""),
+        artist: String(s.artist ?? ""),
+        genre: String(s.genre ?? ""),
+        whyItWorks: String(s.whyItWorks ?? ""),
+        contentStyle: String(s.contentStyle ?? ""),
+      }),
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to parse audio suggestions" },
+      { status: 500 },
+    );
   }
 
-  const audio = Array.from(merged.values())
-    .sort((a, b) => b.usageCount - a.usageCount)
-    .slice(0, 15);
-
-  return NextResponse.json({ audio, niche: niche.trim() });
+  return NextResponse.json({ audio: songs, niche: term });
 }
