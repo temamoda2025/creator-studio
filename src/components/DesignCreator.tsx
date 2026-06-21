@@ -487,6 +487,7 @@ interface Slide { text: string; color: string }
 export interface DesignSeed {
   imageDataUrl: string;
   caption: string;
+  slides?: Array<{ heading: string; body: string }>;
 }
 
 export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
@@ -532,6 +533,8 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   const [slides,         setSlides]         = useState<Slide[]>([{ text: BLANK_CAPTION, color: "#ffffff" }]);
   const [activeSlide,    setActiveSlide]    = useState(0);
   const [downloading,    setDownloading]    = useState(false);
+  // Holds slides pre-populated from a seed so the carousel-switch effect uses them instead of resetting
+  const pendingSeedSlidesRef = useRef<Slide[] | null>(null);
 
   // ── Derived ─────────────────────────────────────────────────────────────────
   const isCarousel   = formatId === "ig-carousel";
@@ -552,10 +555,15 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   // Keep captionRef in sync for the format-switch initialiser below
   useEffect(() => { captionRef.current = caption; }, [caption]);
 
-  // When switching TO carousel, seed slide 1 with whatever is in the caption box
+  // When switching TO carousel, use pending seeded slides if available, otherwise seed from caption
   useEffect(() => {
     if (isCarousel) {
-      setSlides([{ text: captionRef.current, color: textColor }]);
+      if (pendingSeedSlidesRef.current) {
+        setSlides(pendingSeedSlidesRef.current);
+        pendingSeedSlidesRef.current = null;
+      } else {
+        setSlides([{ text: captionRef.current, color: textColor }]);
+      }
       setActiveSlide(0);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -616,9 +624,20 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
       setOverlayOpacity(0.45);
     };
     img.src = seed.imageDataUrl;
-    const firstLine = seed.caption.split("\n")[0]?.slice(0, 150) || seed.caption.slice(0, 150);
-    setCaption(firstLine);
-    setTemplateId("full-bleed");
+
+    if (seed.slides?.length) {
+      // Carousel seed — store slides so the carousel-switch effect picks them up
+      pendingSeedSlidesRef.current = seed.slides.map((s) => ({
+        text: s.heading,
+        color: "#ffffff",
+      }));
+      setFormatId("ig-carousel");
+      setTemplateId("bold-headline");
+    } else {
+      const firstLine = seed.caption.split("\n")[0]?.slice(0, 150) || seed.caption.slice(0, 150);
+      setCaption(firstLine);
+      setTemplateId("full-bleed");
+    }
   }, [seed]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────

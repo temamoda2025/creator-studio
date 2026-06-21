@@ -157,7 +157,7 @@ export default function ContentGenerator({
   onOpenInDesigner,
 }: {
   initialIdea?: string;
-  onOpenInDesigner?: (data: { imageDataUrl: string; caption: string }) => void;
+  onOpenInDesigner?: (data: { imageDataUrl: string; caption: string; slides?: SlideItem[] }) => void;
 }) {
   const { activeBrand } = useBrands();
 
@@ -616,6 +616,7 @@ export default function ContentGenerator({
                         onOpenInDesigner?.({
                           imageDataUrl,
                           caption: result.caption,
+                          slides: result.slides,
                         })
                       }
                       disabled={!onOpenInDesigner}
