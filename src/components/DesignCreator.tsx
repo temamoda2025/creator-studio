@@ -536,6 +536,10 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   // Holds slides pre-populated from a seed so the carousel-switch effect uses them instead of resetting
   const pendingSeedSlidesRef = useRef<Slide[] | null>(null);
 
+  // Brand Kit notice
+  const [kitNotice,      setKitNotice]      = useState(false);
+  const kitNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // ── Derived ─────────────────────────────────────────────────────────────────
   const isCarousel   = formatId === "ig-carousel";
   const fmt          = FORMATS.find((f) => f.id === formatId)!;
@@ -593,12 +597,13 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
       setBrandKitHandle("");
       setLogoImg(null);
       setLogoDataUrl(null);
+      setKitNotice(false);
       return;
     }
     getBrandKit(activeBrand.id).then((kit) => {
       kitRef.current = kit;
       setBgColor(kit.primaryColour);
-      setTextColor(kit.secondaryColour);
+      setTextColor(kit.accentColour);
       setFontFamily(kit.headingFont);
       setBrandKitHandle(kit.handle);
       if (kit.logo) {
@@ -611,6 +616,9 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
         setLogoImg(null);
         setLogoDataUrl(null);
       }
+      if (kitNoticeTimerRef.current) clearTimeout(kitNoticeTimerRef.current);
+      setKitNotice(true);
+      kitNoticeTimerRef.current = setTimeout(() => setKitNotice(false), 3000);
     });
   }, [activeBrand]);
 
@@ -809,11 +817,18 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
       <div className="bg-white border border-black/10 p-8">
         <div className="flex items-start justify-between mb-1">
           <h2 className="text-base font-semibold">Design Creator</h2>
-          {activeBrand && (
-            <span className="text-xs border border-black/15 px-2.5 py-1 rounded-full text-black/50 shrink-0 ml-4">
-              {activeBrand.name}
-            </span>
-          )}
+          <div className="flex items-center gap-2 ml-4">
+            {kitNotice && (
+              <span className="text-[11px] border border-emerald-200 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full shrink-0">
+                Brand Kit loaded ✓
+              </span>
+            )}
+            {activeBrand && (
+              <span className="text-xs border border-black/15 px-2.5 py-1 rounded-full text-black/50 shrink-0">
+                {activeBrand.name}
+              </span>
+            )}
+          </div>
         </div>
         <p className="text-sm text-black/40 mb-8 leading-relaxed">
           Create branded social graphics. Choose a template and format, paste your caption, pick colours and a font — then download at full resolution.
