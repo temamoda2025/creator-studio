@@ -55,7 +55,7 @@ Rules:
 
   const response = await client.messages.create({
     model: "claude-opus-4-8",
-    max_tokens: 1024,
+    max_tokens: 2048,
     messages: [{ role: "user", content: prompt }],
   });
 
@@ -64,11 +64,19 @@ Rules:
     .map((b) => (b as { type: "text"; text: string }).text)
     .join("");
 
-  const cleaned = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+  // Extract the JSON array even if Claude wraps it in prose or fences
+  const match = raw.match(/\[[\s\S]*\]/);
+  if (!match) {
+    console.error("[trending-audio] No JSON array found in response:", raw);
+    return NextResponse.json(
+      { error: "Failed to parse audio suggestions" },
+      { status: 500 },
+    );
+  }
 
   let songs: TrendingAudio[];
   try {
-    const parsed = JSON.parse(cleaned);
+    const parsed = JSON.parse(match[0]);
     songs = (Array.isArray(parsed) ? parsed : []).map(
       (s: Record<string, string>, i: number) => {
         const title = String(s.title ?? "");
@@ -87,7 +95,8 @@ Rules:
         };
       },
     );
-  } catch {
+  } catch (e) {
+    console.error("[trending-audio] JSON.parse failed:", e, "\nExtracted:", match[0]);
     return NextResponse.json(
       { error: "Failed to parse audio suggestions" },
       { status: 500 },

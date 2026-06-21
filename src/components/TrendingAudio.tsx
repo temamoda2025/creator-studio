@@ -122,14 +122,15 @@ export default function TrendingAudio() {
     }
   }, []);
 
-  // Auto-fetch when brand switches
+  // Auto-fetch when brand switches, only when niche is available
   useEffect(() => {
     if (!activeBrand) return;
-    setSearchInput(activeBrand.niche);
+    setSearchInput(activeBrand.niche ?? "");
     setAudio([]);
     setError(null);
     setActiveTerm(null);
     fetchedTermRef.current = null;
+    if (!activeBrand.niche?.trim()) return;
     fetchAudio(activeBrand.niche);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBrand?.id]);
