@@ -10,6 +10,8 @@ interface TrendingAudioItem {
   genre: string;
   whyItWorks: string;
   contentStyle: string;
+  platform: "tiktok" | "instagram";
+  exampleUrl: string;
 }
 
 // ─── Skeletons ────────────────────────────────────────────────────────────────
@@ -36,6 +38,12 @@ function AudioSkeleton() {
 // ─── Audio card ───────────────────────────────────────────────────────────────
 
 function AudioCard({ track }: { track: TrendingAudioItem }) {
+  const isTikTok = track.platform === "tiktok";
+  const platformLabel = isTikTok ? "TikTok" : "Instagram";
+  const platformClass = isTikTok
+    ? "bg-zinc-100 text-black/60 border-black/15"
+    : "bg-rose-50 text-rose-600 border-rose-200";
+
   return (
     <div className="border border-black/10 p-5 hover:border-black/25 transition-colors flex flex-col gap-3">
       <div>
@@ -43,16 +51,17 @@ function AudioCard({ track }: { track: TrendingAudioItem }) {
           <p className="text-sm font-medium leading-snug flex-1 min-w-0" title={track.title}>
             {track.title}
           </p>
-          {track.genre && (
-            <span className="shrink-0 text-[10px] border border-black/15 px-2 py-0.5 rounded-full whitespace-nowrap text-black/50">
-              {track.genre}
-            </span>
-          )}
+          <span className={`shrink-0 text-[10px] border px-2 py-0.5 rounded-full whitespace-nowrap ${platformClass}`}>
+            {platformLabel}
+          </span>
         </div>
         {track.artist && (
           <p className="text-xs text-black/40 truncate" title={track.artist}>
             {track.artist}
           </p>
+        )}
+        {track.genre && (
+          <p className="text-[11px] text-black/30 mt-0.5">{track.genre}</p>
         )}
       </div>
 
@@ -62,11 +71,21 @@ function AudioCard({ track }: { track: TrendingAudioItem }) {
         </p>
       )}
 
-      {track.contentStyle && (
-        <p className="text-xs text-black font-medium mt-auto">
-          → {track.contentStyle}
-        </p>
-      )}
+      <div className="flex items-center justify-between mt-auto">
+        {track.contentStyle && (
+          <p className="text-xs text-black font-medium">→ {track.contentStyle}</p>
+        )}
+        {track.exampleUrl && (
+          <a
+            href={track.exampleUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-black/35 hover:text-black transition-colors whitespace-nowrap ml-auto"
+          >
+            View examples →
+          </a>
+        )}
+      </div>
     </div>
   );
 }
