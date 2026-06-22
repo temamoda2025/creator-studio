@@ -19,7 +19,17 @@ function isAstra(brandName: string, niche: string): boolean {
     n.includes("chauffeur") ||
     n.includes("limousine") ||
     n.includes("luxury transport") ||
-    n.includes("wedding transport")
+    n.includes("wedding transport") ||
+    n.includes("travel")
+  );
+}
+
+function isNatasha(brandName: string, niche: string): boolean {
+  const n = niche?.toLowerCase() ?? "";
+  return (
+    brandName?.toLowerCase().includes("natasha") ||
+    n.includes("personal styling") ||
+    n.includes("styling")
   );
 }
 
@@ -119,6 +129,35 @@ Rules:
 - Each idea covers a different pillar
 - Hooks speak to the identity and values of the woman, not the product`;
 
+const NATASHA_PROMPT = `Generate 5 high-quality, specific social media content ideas for Natasha Tszyu — a personal stylist and luxury fashion editor who helps women look and feel extraordinary in their everyday life.
+
+Content pillars:
+- Wardrobe transformations (the before and after, what changes when you dress intentionally, the woman who finally feels like herself)
+- Styling tips by body type and occasion (what actually works, the rules stylists live by, the mistakes most women make)
+- Luxury fashion edits (how to shop smart at the high end, the investment pieces worth every dollar, seasonal edits curated by Natasha)
+- Behind the scenes of a styling session (the process, the client reveal moment, the decisions that happen in the fitting room)
+- Client success stories (the wedding guest who stopped apologising for her body, the executive who finally owns the room, the woman who stopped hiding)
+
+Tone: Warm but elevated. Encouraging without being soft. She is the brilliant friend who happens to know everything about style — she tells you the truth, then shows you how to fix it. Hooks feel personal, like she is talking directly to one woman.
+
+Return ONLY a raw JSON array — no markdown, no code fences, no preamble. Each item must match this exact shape:
+[
+  {
+    "pillar": "Content pillar name (2–4 words, e.g. Wardrobe Transformation, Styling Session, Investment Edit)",
+    "format": "Carousel | Reel | Static Post | Story",
+    "hook": "The exact hook line — warm, specific, feels like it was written for one woman. In first or second person. Ready to post as-is.",
+    "effort": "Low | Medium | High"
+  }
+]
+
+Rules:
+- Return exactly 5 ideas
+- Hooks must be specific and personal — not generic fashion tips. Example quality bar: "She cried in the fitting room. Not because nothing fit — because something finally did." not "Style tips for every body type"
+- Mix formats: include at least 1 Carousel, 1 Reel, 1 Static Post
+- Mix effort: include at least 1 Low, 1 Medium, 1 High
+- Each idea covers a different pillar
+- Hooks make the reader feel seen, not sold to`;
+
 const GENERIC_PROMPT = (niche: string, targetAudience: string, positioning: string) =>
   `Generate 5 high-quality, specific social media content ideas for a ${niche} brand.
 ${positioning ? `Brand Positioning: ${positioning}\n` : ""}Target Audience: ${targetAudience || "infer from niche"}
@@ -148,12 +187,15 @@ const TOPIC_PROMPT = (
   positioning: string,
   vanessa: boolean,
   astra: boolean,
+  natasha: boolean,
   temaModa: boolean,
 ) => {
   const voiceBlock = vanessa
     ? `Brand Voice: Vanessa Stoykov — bold, taboo-breaking finance educator. Brave, direct, confronting. Speaks to women in their 40s–60s navigating money and major life events.`
     : astra
-    ? `Brand Voice: Astra Chauffeur — quietly luxurious, unhurried, scene-setting. Premium chauffeur and wedding transport. Hooks feel like the beginning of a story.`
+    ? `Brand Voice: Astra Limousines — quietly luxurious, unhurried, scene-setting. Premium chauffeur and wedding transport. Hooks feel like the beginning of a story.`
+    : natasha
+    ? `Brand Voice: Natasha Tszyu — warm, elevated personal stylist. Helps women look and feel extraordinary. Hooks feel personal, like talking directly to one woman who finally feels seen.`
     : temaModa
     ? `Brand Voice: Tema Moda — elevated, considered, insider. Luxury fashion. Speaks to women who understand style as identity. Hooks feel like a truth the reader has always known.`
     : `Brand: ${niche} brand.${positioning ? ` Positioning: ${positioning}.` : ""}${targetAudience ? ` Target Audience: ${targetAudience}.` : ""}`;
@@ -190,17 +232,20 @@ export async function POST(request: Request) {
 
     const vanessa  = isVanessaStoykov(brandName ?? "", niche);
     const astra    = !vanessa && isAstra(brandName ?? "", niche);
-    const temaModa = !vanessa && !astra && isTemaModa(brandName ?? "", niche);
+    const natasha  = !vanessa && !astra && isNatasha(brandName ?? "", niche);
+    const temaModa = !vanessa && !astra && !natasha && isTemaModa(brandName ?? "", niche);
 
     const userMessage = topic
-      ? TOPIC_PROMPT(topic, niche, targetAudience, positioning, vanessa, astra, temaModa)
+      ? TOPIC_PROMPT(topic, niche, targetAudience, positioning, vanessa, astra, natasha, temaModa)
       : vanessa
         ? VANESSA_PROMPT
         : astra
           ? ASTRA_PROMPT
-          : temaModa
-            ? TEMA_MODA_PROMPT
-            : GENERIC_PROMPT(niche, targetAudience, positioning);
+          : natasha
+            ? NATASHA_PROMPT
+            : temaModa
+              ? TEMA_MODA_PROMPT
+              : GENERIC_PROMPT(niche, targetAudience, positioning);
 
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
