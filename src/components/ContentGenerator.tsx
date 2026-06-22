@@ -63,6 +63,30 @@ const ADORAR_LABELS: {
 const FALLBACK_FONT =
   'system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
 
+async function compressImage(dataUrl: string, maxPx = 1600, quality = 0.85): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.naturalWidth;
+      let h = img.naturalHeight;
+      if (w > maxPx || h > maxPx) {
+        const scale = Math.min(maxPx / w, maxPx / h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { resolve(dataUrl); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = dataUrl;
+  });
+}
+
 function drawDesignPreview(
   canvas: HTMLCanvasElement,
   img: HTMLImageElement,
@@ -224,9 +248,21 @@ export default function ContentGenerator({
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setImageDataUrl(ev.target?.result as string);
+    reader.onload = async (ev) => {
+      const raw = ev.target?.result as string;
       setImageError(null);
+      try {
+        const compressed = await compressImage(raw);
+        // base64 length * 0.75 ≈ byte size; Vercel limit is 4.5 MB
+        const approxBytes = compressed.length * 0.75;
+        if (approxBytes > 4 * 1024 * 1024) {
+          setImageError("Image is too large even after compression. Please try a smaller photo.");
+          return;
+        }
+        setImageDataUrl(compressed);
+      } catch {
+        setImageDataUrl(raw); // fallback: use original if compression fails
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -286,8 +322,11 @@ export default function ContentGenerator({
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Generation failed");
+        if (res.status === 413) {
+          throw new Error("Image is too large. Please use a smaller image (under 4MB).");
+        }
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error || "Generation failed");
       }
 
       const data: ContentResult = await res.json();
