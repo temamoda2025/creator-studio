@@ -9,6 +9,8 @@ import TrendingAudio from "@/components/TrendingAudio";
 import CaptionHistory from "@/components/CaptionHistory";
 import ReelScriptGenerator from "@/components/ReelScriptGenerator";
 import DesignCreator, { type DesignSeed } from "@/components/DesignCreator";
+import ContentCalendar, { type CalendarIdea } from "@/components/ContentCalendar";
+import ContentAnalytics from "@/components/ContentAnalytics";
 import { useBrands } from "@/context/BrandsContext";
 import type { Brand } from "@/types/brand";
 
@@ -280,13 +282,10 @@ function IdeasSkeleton() {
 }
 
 function IdeaGrid({
-  ideas, addingIdea, setAddingIdea, weekDays, addToCalendar,
+  ideas, onAddToCalendar,
 }: {
   ideas: Idea[];
-  addingIdea: string | null;
-  setAddingIdea: (v: string | null) => void;
-  weekDays: WeekDay[];
-  addToCalendar: (dateKey: string, post: string) => void;
+  onAddToCalendar: (idea: { title: string; format: string }) => void;
 }) {
   if (ideas.length === 0) return null;
   return (
@@ -311,36 +310,12 @@ function IdeaGrid({
             </div>
           </div>
           <p className="text-sm font-medium leading-snug">{hook}</p>
-          {addingIdea === hook ? (
-            <div className="mt-3 pt-3 border-t border-black/8">
-              <p className="text-[11px] text-black/40 mb-2">Pick a day:</p>
-              <div className="flex flex-wrap gap-1.5">
-                {weekDays.map(({ key, day, dateNum, dateObj }) => (
-                  <button
-                    key={key}
-                    onClick={() => addToCalendar(key, hook.replace(/^"|"$/g, ""))}
-                    className="text-[11px] px-2 py-1 border border-black/15 hover:border-black hover:bg-black hover:text-white transition-colors rounded"
-                    title={dateObj.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "short" })}
-                  >
-                    {day} {dateNum}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setAddingIdea(null)}
-                  className="text-[11px] px-2 py-1 text-black/30 hover:text-black transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setAddingIdea(hook)}
-              className="mt-3 text-xs text-black/30 hover:text-black transition-colors"
-            >
-              Add to calendar →
-            </button>
-          )}
+          <button
+            onClick={() => onAddToCalendar({ title: hook.replace(/^"|"$/g, ""), format })}
+            className="mt-3 text-xs text-black/30 hover:text-black transition-colors"
+          >
+            Add to calendar →
+          </button>
         </div>
       ))}
     </div>
@@ -357,7 +332,7 @@ function ErrorBanner({ message }: { message: string }) {
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "research" | "trending-audio" | "content-generator" | "reel-scripts" | "design-creator" | "history";
+type Tab = "overview" | "research" | "trending-audio" | "content-generator" | "reel-scripts" | "design-creator" | "history" | "calendar" | "analytics";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview",          label: "Overview"           },
@@ -367,6 +342,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "reel-scripts",      label: "Reel Scripts"       },
   { id: "design-creator",    label: "Design Creator"     },
   { id: "history",           label: "History"            },
+  { id: "calendar",          label: "Calendar"           },
+  { id: "analytics",         label: "Analytics"          },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -374,9 +351,10 @@ const TABS: { id: Tab; label: string }[] = [
 export default function DashboardPage() {
   const { activeBrand } = useBrands();
 
-  const [tab,         setTab]         = useState<Tab>("overview");
-  const [inspireIdea, setInspireIdea] = useState("");
-  const [designSeed,  setDesignSeed]  = useState<DesignSeed | null>(null);
+  const [tab,                 setTab]                 = useState<Tab>("overview");
+  const [inspireIdea,         setInspireIdea]         = useState("");
+  const [designSeed,          setDesignSeed]          = useState<DesignSeed | null>(null);
+  const [pendingCalendarIdea, setPendingCalendarIdea] = useState<CalendarIdea | null>(null);
 
   // Instagram
   const [igData,    setIgData]    = useState<IgStats | null>(null);
@@ -397,7 +375,6 @@ export default function DashboardPage() {
   // Calendar
   const [today,        setToday]       = useState<Date | null>(null);
   const [calendarData, setCalendarData] = useState<CalendarData>({});
-  const [addingIdea,   setAddingIdea]  = useState<string | null>(null); // hook being scheduled
 
   // Hydrate today client-side to avoid mismatch
   useEffect(() => { setToday(new Date()); }, []);
@@ -418,7 +395,6 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!activeBrand) { setCalendarData({}); return; }
     setCalendarData(loadCalendar(activeBrand.id));
-    setAddingIdea(null);
   }, [activeBrand]);
 
   // Clear topic search on brand switch
@@ -515,7 +491,6 @@ export default function DashboardPage() {
       saveCalendar(activeBrand.id, next);
       return next;
     });
-    setAddingIdea(null);
   }, [activeBrand]);
 
   const toggleDone = useCallback((dateKey: string) => {
@@ -811,7 +786,7 @@ export default function DashboardPage() {
                             Clear ×
                           </button>
                         </div>
-                        <IdeaGrid ideas={topicIdeas} addingIdea={addingIdea} setAddingIdea={setAddingIdea} weekDays={weekDays} addToCalendar={addToCalendar} />
+                        <IdeaGrid ideas={topicIdeas} onAddToCalendar={(idea) => { setPendingCalendarIdea({ ...idea, _key: Date.now() }); setTab("calendar"); }} />
                         <div className="border-t border-black/8 my-8" />
                       </>
                     )}
@@ -821,7 +796,7 @@ export default function DashboardPage() {
                       <p className="text-xs uppercase tracking-[0.15em] text-black/40 mb-4">Suggested Ideas</p>
                     )}
                     {ideasLoading ? <IdeasSkeleton /> : (
-                      <IdeaGrid ideas={ideas} addingIdea={addingIdea} setAddingIdea={setAddingIdea} weekDays={weekDays} addToCalendar={addToCalendar} />
+                      <IdeaGrid ideas={ideas} onAddToCalendar={(idea) => { setPendingCalendarIdea({ ...idea, _key: Date.now() }); setTab("calendar"); }} />
                     )}
                   </div>
 
@@ -918,6 +893,14 @@ export default function DashboardPage() {
 
           {/* ── History ── */}
           {tab === "history" && <CaptionHistory />}
+
+          {/* ── Calendar ── */}
+          {tab === "calendar" && (
+            <ContentCalendar initialIdea={pendingCalendarIdea} />
+          )}
+
+          {/* ── Analytics ── */}
+          {tab === "analytics" && <ContentAnalytics />}
 
         </div>
       </div>
