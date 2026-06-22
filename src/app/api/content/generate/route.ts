@@ -222,8 +222,14 @@ Return ONLY the raw JSON object. No markdown. No code fences. No preamble.`;
     }
 
     let jsonText = textBlock.text.trim();
+
+    // Strip markdown fences if present
     const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (fenceMatch) jsonText = fenceMatch[1].trim();
+
+    // Extract the JSON object even if Claude adds preamble text
+    const objMatch = jsonText.match(/\{[\s\S]*\}/);
+    if (objMatch) jsonText = objMatch[0];
 
     return Response.json(JSON.parse(jsonText));
   } catch (error) {
