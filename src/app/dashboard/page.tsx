@@ -11,6 +11,7 @@ import ReelScriptGenerator from "@/components/ReelScriptGenerator";
 import DesignCreator, { type DesignSeed } from "@/components/DesignCreator";
 import ContentCalendar, { type CalendarIdea } from "@/components/ContentCalendar";
 import ContentAnalytics from "@/components/ContentAnalytics";
+import SocialConnections from "@/components/SocialConnections";
 import { useBrands } from "@/context/BrandsContext";
 import type { Brand } from "@/types/brand";
 
@@ -610,19 +611,10 @@ export default function DashboardPage() {
                           </div>
                         ))}
                       </div>
-                      <div className="bg-zinc-50 border border-black/10 px-6 py-4 flex items-center justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-medium text-black/70">Connect Instagram for {activeBrand.name}</p>
-                          <p className="text-xs text-black/40 mt-0.5">
-                            Live follower counts, engagement rates and reach will appear here once your account is connected.
-                          </p>
-                        </div>
-                        <span className="shrink-0 text-xs border border-black/15 px-4 py-2 rounded-full text-black/40">
-                          Coming soon
-                        </span>
-                      </div>
                     </>
                   )}
+
+                  <SocialConnections brandId={activeBrand.id} />
 
                   <div className="grid sm:grid-cols-3 gap-6">
 
