@@ -419,6 +419,9 @@ export default function DashboardPage() {
         niche: brand.niche,
         targetAudience: brand.targetAudience,
         positioning: brand.positioning ?? null,
+        mission: brand.mission ?? null,
+        vision: brand.vision ?? null,
+        brandVoice: brand.brandVoice ?? null,
       }),
     })
       .then((r) => r.json())
@@ -452,6 +455,9 @@ export default function DashboardPage() {
         niche: activeBrand.niche,
         targetAudience: activeBrand.targetAudience,
         positioning: activeBrand.positioning ?? null,
+        mission: activeBrand.mission ?? null,
+        vision: activeBrand.vision ?? null,
+        brandVoice: activeBrand.brandVoice ?? null,
         topic: topic.trim(),
       }),
     })

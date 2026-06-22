@@ -158,27 +158,80 @@ Rules:
 - Each idea covers a different pillar
 - Hooks make the reader feel seen, not sold to`;
 
-const GENERIC_PROMPT = (niche: string, targetAudience: string, positioning: string) =>
-  `Generate 5 high-quality, specific social media content ideas for a ${niche} brand.
-${positioning ? `Brand Positioning: ${positioning}\n` : ""}Target Audience: ${targetAudience || "infer from niche"}
+interface BrandVoiceTrait { trait: string; opposite: string; intensity: number; }
+interface BrandVoicePayload {
+  traits?: BrandVoiceTrait[];
+  toneDescription?: string;
+  captionExample?: string;
+}
+
+function buildBrandPrompt(
+  brandName: string,
+  niche: string,
+  targetAudience: string,
+  positioning: string | null,
+  mission: string | null,
+  vision: string | null,
+  brandVoice: BrandVoicePayload | null,
+): string {
+  // Resolve dominant side of each voice trait slider
+  const traitsLine = brandVoice?.traits?.length
+    ? brandVoice.traits
+        .map(t =>
+          t.intensity >= 0.65 ? t.trait
+          : t.intensity <= 0.35 ? t.opposite
+          : `${t.trait}/${t.opposite}`
+        )
+        .join(", ")
+    : null;
+
+  const context = [
+    mission     ? `**Mission:** ${mission}`         : null,
+    vision      ? `**Vision:** ${vision}`            : null,
+    positioning ? `**Positioning:** ${positioning}`  : null,
+    targetAudience ? `**Target Audience:** ${targetAudience}` : null,
+  ].filter(Boolean).join("\n");
+
+  const voice = [
+    brandVoice?.toneDescription ? `**Tone:** ${brandVoice.toneDescription}` : null,
+    traitsLine ? `**Voice traits:** ${traitsLine}` : null,
+    brandVoice?.captionExample
+      ? `**Caption example — study this voice carefully and match it exactly:**\n"${brandVoice.captionExample}"`
+      : null,
+  ].filter(Boolean).join("\n");
+
+  return `Generate 5 high-quality, specific social media content ideas for ${brandName} — a ${niche} brand.
+
+${context}
+${voice ? `\n## Brand Voice\n${voice}` : ""}
+
+## Your Task
+
+Generate 5 content ideas that could ONLY have been written for ${brandName}. Not templates — the hooks must feel like they came from inside this brand, from someone who has lived in this world for years.
+
+Quality bar:
+- Specific scenarios, not general topics ("The client who almost cancelled because she didn't own one piece that fit" beats "wardrobe tips")
+- Real texture: include numbers, timeframes, emotions, turning points wherever authentic
+- Hooks in first or second person that land like a confession, a challenge, or a revelation
+- Never generic — if a hook could apply to any ${niche} brand, it is not good enough
 
 Return ONLY a raw JSON array — no markdown, no code fences, no preamble. Each item must match this exact shape:
 [
   {
-    "pillar": "Content pillar name (2–4 words, e.g. Client Success, Brand Story, Expert Education)",
+    "pillar": "Content pillar name (2–4 words, specific to ${brandName}'s world)",
     "format": "Carousel | Reel | Static Post | Story",
-    "hook": "The exact hook line — a specific, scroll-stopping sentence in first or second person, ready to use as-is",
+    "hook": "The exact hook line — specific, scroll-stopping, in first or second person, ready to post as-is",
     "effort": "Low | Medium | High"
   }
 ]
 
 Rules:
 - Return exactly 5 ideas
-- Hooks must be deeply specific to the ${niche} world — not generic. Example quality bar: "The #1 money mistake I see high earners make" not "Tips for saving money"
+- Every hook must feel like it belongs to ${brandName} specifically — never generic
 - Mix formats: include at least 1 Carousel, 1 Reel, 1 Static Post
 - Mix effort: include at least 1 Low, 1 Medium, 1 High
-- Hooks written in first or second person
-- Ideas should cover different content pillars (education, social proof, behind the scenes, inspiration, etc.)`;
+- Cover different angles: education, social proof, behind the scenes, personal story, transformation`;
+}
 
 const TOPIC_PROMPT = (
   topic: string,
@@ -189,7 +242,15 @@ const TOPIC_PROMPT = (
   astra: boolean,
   natasha: boolean,
   temaModa: boolean,
+  brandName: string,
+  brandVoice: BrandVoicePayload | null,
 ) => {
+  const traitsLine = brandVoice?.traits?.length
+    ? brandVoice.traits
+        .map(t => t.intensity >= 0.65 ? t.trait : t.intensity <= 0.35 ? t.opposite : `${t.trait}/${t.opposite}`)
+        .join(", ")
+    : null;
+
   const voiceBlock = vanessa
     ? `Brand Voice: Vanessa Stoykov — bold, taboo-breaking finance educator. Brave, direct, confronting. Speaks to women in their 40s–60s navigating money and major life events.`
     : astra
@@ -198,7 +259,14 @@ const TOPIC_PROMPT = (
     ? `Brand Voice: Natasha Tszyu — warm, elevated personal stylist. Helps women look and feel extraordinary. Hooks feel personal, like talking directly to one woman who finally feels seen.`
     : temaModa
     ? `Brand Voice: Tema Moda — elevated, considered, insider. Luxury fashion. Speaks to women who understand style as identity. Hooks feel like a truth the reader has always known.`
-    : `Brand: ${niche} brand.${positioning ? ` Positioning: ${positioning}.` : ""}${targetAudience ? ` Target Audience: ${targetAudience}.` : ""}`;
+    : [
+        `Brand: ${brandName} (${niche}).`,
+        positioning ? `Positioning: ${positioning}.` : null,
+        targetAudience ? `Target Audience: ${targetAudience}.` : null,
+        brandVoice?.toneDescription ? `Tone: ${brandVoice.toneDescription}.` : null,
+        traitsLine ? `Voice traits: ${traitsLine}.` : null,
+        brandVoice?.captionExample ? `Voice example: "${brandVoice.captionExample}"` : null,
+      ].filter(Boolean).join(" ");
 
   return `Generate 5 high-quality, specific social media content ideas on the topic of "${topic}".
 
@@ -224,7 +292,10 @@ Rules:
 
 export async function POST(request: Request) {
   try {
-    const { niche, targetAudience, positioning, brandName, topic } = await request.json();
+    const {
+      niche, targetAudience, positioning, brandName, topic,
+      mission, vision, brandVoice,
+    } = await request.json();
 
     if (!niche) {
       return Response.json({ error: "niche is required" }, { status: 400 });
@@ -236,7 +307,7 @@ export async function POST(request: Request) {
     const temaModa = !vanessa && !astra && !natasha && isTemaModa(brandName ?? "", niche);
 
     const userMessage = topic
-      ? TOPIC_PROMPT(topic, niche, targetAudience, positioning, vanessa, astra, natasha, temaModa)
+      ? TOPIC_PROMPT(topic, niche, targetAudience, positioning, vanessa, astra, natasha, temaModa, brandName ?? "", brandVoice ?? null)
       : vanessa
         ? VANESSA_PROMPT
         : astra
@@ -245,7 +316,7 @@ export async function POST(request: Request) {
             ? NATASHA_PROMPT
             : temaModa
               ? TEMA_MODA_PROMPT
-              : GENERIC_PROMPT(niche, targetAudience, positioning);
+              : buildBrandPrompt(brandName ?? "", niche, targetAudience, positioning ?? null, mission ?? null, vision ?? null, brandVoice ?? null);
 
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
