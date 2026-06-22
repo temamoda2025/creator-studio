@@ -18,15 +18,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${origin}/dashboard?social_error=instagram`);
   }
 
-  // Exchange code for short-lived token
+  // Exchange code for short-lived token (Instagram Login API)
   const tokenRes = await fetch("https://api.instagram.com/oauth/access_token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: process.env.META_APP_ID!,
-      client_secret: process.env.META_APP_SECRET!,
+      client_id: process.env.INSTAGRAM_APP_ID!,
+      client_secret: process.env.INSTAGRAM_APP_SECRET!,
       grant_type: "authorization_code",
-      redirect_uri: process.env.META_REDIRECT_URI!,
+      redirect_uri: process.env.INSTAGRAM_REDIRECT_URI!,
       code,
     }).toString(),
   });
@@ -40,11 +40,11 @@ export async function GET(req: NextRequest) {
     user_id: number;
   };
 
-  // Exchange for long-lived token (~60-day expiry)
+  // Upgrade to long-lived token (~60-day expiry)
   let accessToken = shortToken;
   let expiresAt: string | null = null;
   const llRes = await fetch(
-    `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${process.env.META_APP_SECRET}&access_token=${shortToken}`
+    `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${process.env.INSTAGRAM_APP_SECRET}&access_token=${shortToken}`
   );
   if (llRes.ok) {
     const ll = await llRes.json() as { access_token: string; expires_in: number };
@@ -54,13 +54,13 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Fetch username
+  // Fetch username and account type via Instagram Login API
   let username: string | null = null;
   const meRes = await fetch(
-    `https://graph.instagram.com/me?fields=id,username&access_token=${accessToken}`
+    `https://graph.instagram.com/v22.0/me?fields=user_id,username,account_type&access_token=${accessToken}`
   );
   if (meRes.ok) {
-    const me = await meRes.json() as { id: string; username: string };
+    const me = await meRes.json() as { user_id: string; username: string; account_type: string };
     username = me.username ?? null;
   }
 
