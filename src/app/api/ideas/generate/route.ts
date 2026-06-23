@@ -1,5 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const client = new Anthropic();
 
 function isVanessaStoykov(brandName: string, niche: string): boolean {
@@ -306,7 +309,7 @@ export async function POST(request: Request) {
     const natasha  = !vanessa && !astra && isNatasha(brandName ?? "", niche);
     const temaModa = !vanessa && !astra && !natasha && isTemaModa(brandName ?? "", niche);
 
-    const userMessage = topic
+    const baseMessage = topic
       ? TOPIC_PROMPT(topic, niche, targetAudience, positioning, vanessa, astra, natasha, temaModa, brandName ?? "", brandVoice ?? null)
       : vanessa
         ? VANESSA_PROMPT
@@ -317,6 +320,8 @@ export async function POST(request: Request) {
             : temaModa
               ? TEMA_MODA_PROMPT
               : buildBrandPrompt(brandName ?? "", niche, targetAudience, positioning ?? null, mission ?? null, vision ?? null, brandVoice ?? null);
+
+    const userMessage = `${baseMessage}\n\n[ts:${Date.now()}]`;
 
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
@@ -335,7 +340,9 @@ export async function POST(request: Request) {
 
     const parsed = JSON.parse(jsonText);
     const ideas = Array.isArray(parsed) ? parsed : parsed.ideas ?? [];
-    return Response.json(ideas);
+    return Response.json(ideas, {
+      headers: { "Cache-Control": "no-store, max-age=0" },
+    });
   } catch (error) {
     console.error("Ideas generation error:", error);
     return Response.json({ error: "Failed to generate ideas" }, { status: 500 });
