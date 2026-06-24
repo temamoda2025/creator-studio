@@ -13,6 +13,7 @@ const PLATFORMS: { id: Platform; label: string }[] = [
   { id: "youtube", label: "YouTube" },
   { id: "pinterest", label: "Pinterest" },
   { id: "facebook", label: "Facebook" },
+  { id: "linkedin", label: "LinkedIn" },
 ];
 
 const NICHES = [

@@ -1,4 +1,4 @@
-export type Platform = "instagram" | "tiktok" | "youtube" | "pinterest" | "facebook";
+export type Platform = "instagram" | "tiktok" | "youtube" | "pinterest" | "facebook" | "linkedin";
 
 export interface BrandVoiceTrait {
   trait: string;
