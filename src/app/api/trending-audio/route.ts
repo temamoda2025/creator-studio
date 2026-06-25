@@ -83,33 +83,56 @@ async function fetchFromApify(term: string, limit = 12): Promise<TrendingAudio[]
 
   const actorId = process.env.APIFY_ACTOR_ID ?? DEFAULT_ACTOR;
 
-  // run-sync-get-dataset-items: starts the actor, waits for it to finish,
-  // and returns the dataset items as a JSON array in one request.
-  const res = await fetch(
-    `https://api.apify.com/v2/acts/${encodeURIComponent(actorId)}/run-sync-get-dataset-items?token=${token}&format=json`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        // automation-lab~tiktok-trends-scraper input schema:
-        // https://apify.com/automation-lab/tiktok-trends-scraper
-        keyword: term,
-        period: 7,       // integer: 7 | 30 | 120 days
-        country: "AU",
-        limit,
-      }),
-    }
-  );
+  // run-sync-get-dataset-items: runs the actor synchronously and returns
+  // dataset items as a JSON array. timeout=120 gives the TikTok scraper
+  // enough runway; memory=1024 MB is typical for browser-based actors.
+  const url =
+    `https://api.apify.com/v2/acts/${encodeURIComponent(actorId)}/run-sync-get-dataset-items` +
+    `?token=${token}&format=json&timeout=120&memory=1024`;
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Apify returned ${res.status}: ${text.slice(0, 200)}`);
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      // automation-lab~tiktok-trends-scraper input schema:
+      // https://apify.com/automation-lab/tiktok-trends-scraper
+      keyword: term,
+      period: 7,       // integer: 7 | 30 | 120 days
+      country: "AU",
+      limit,
+    }),
+  });
+
+  // Always read as text first — Apify can return plain-text or HTML errors
+  // even on 2xx status codes (e.g. actor runtime errors, gateway timeouts).
+  const rawBody = await res.text().catch(() => "");
+  const contentType = res.headers.get("content-type") ?? "";
+  const isJson = contentType.includes("application/json");
+
+  if (!res.ok || !isJson) {
+    console.error(
+      `[trending-audio] Apify error — status: ${res.status}, ` +
+      `content-type: ${contentType}, body: ${rawBody.slice(0, 500)}`
+    );
+    throw new Error(
+      `Trending audio source temporarily unavailable (${res.status}). ` +
+      `Actor said: ${rawBody.slice(0, 150)}`
+    );
   }
 
-  const items: unknown = await res.json();
+  let items: unknown;
+  try {
+    items = JSON.parse(rawBody);
+  } catch (parseErr) {
+    console.error(
+      `[trending-audio] JSON parse failed — body was: ${rawBody.slice(0, 500)}`
+    );
+    throw new Error("Trending audio source returned unexpected data. Please try again.");
+  }
 
   if (!Array.isArray(items)) {
-    throw new Error("Apify response was not an array");
+    console.error("[trending-audio] Apify response not an array:", rawBody.slice(0, 300));
+    throw new Error("Trending audio source returned unexpected data. Please try again.");
   }
 
   return items
