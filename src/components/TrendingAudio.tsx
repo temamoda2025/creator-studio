@@ -7,52 +7,60 @@ interface TrendingAudioItem {
   id: string;
   title: string;
   artist: string;
-  genre: string;
-  whyItWorks: string;
-  contentStyle: string;
-  platform: "tiktok" | "instagram";
-  exampleUrl: string;
+  playCount: number;
+  videoCount: number;
+  isTrendingUp: boolean;
+  tiktokUrl: string;
 }
 
-// ─── Skeletons ────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function fmtCount(n: number): string {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
+  if (n >= 1_000_000)     return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000)         return `${Math.round(n / 1_000)}K`;
+  return n > 0 ? String(n) : "—";
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function AudioSkeleton() {
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
       {[...Array(6)].map((_, i) => (
         <div key={i} className="border border-black/10 p-5">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="h-4 bg-black/8 rounded w-36" />
-            <div className="h-5 bg-black/6 rounded-full w-20 shrink-0" />
+          <div className="h-3.5 bg-black/8 rounded w-40 mb-2" />
+          <div className="h-3 bg-black/5 rounded w-24 mb-5" />
+          <div className="flex gap-4 mb-3">
+            <div className="h-3 bg-black/6 rounded w-16" />
+            <div className="h-3 bg-black/5 rounded w-16" />
           </div>
-          <div className="h-3 bg-black/6 rounded w-24 mb-4" />
-          <div className="h-3 bg-black/5 rounded w-full mb-1.5" />
-          <div className="h-3 bg-black/5 rounded w-4/5 mb-4" />
-          <div className="h-5 bg-black/4 rounded w-36" />
+          <div className="h-7 bg-black/4 rounded-full w-28" />
         </div>
       ))}
     </div>
   );
 }
 
-// ─── Audio card ───────────────────────────────────────────────────────────────
+// ─── Card ─────────────────────────────────────────────────────────────────────
 
 function AudioCard({ track }: { track: TrendingAudioItem }) {
-  const isTikTok = track.platform === "tiktok";
-  const platformLabel = isTikTok ? "TikTok" : "Instagram";
-  const platformClass = isTikTok
-    ? "bg-zinc-100 text-black/60 border-black/15"
-    : "bg-rose-50 text-rose-600 border-rose-200";
-
   return (
-    <div className="border border-black/10 p-5 hover:border-black/25 transition-colors flex flex-col gap-3">
+    <div className="border border-black/10 p-5 hover:border-black/25 transition-colors flex flex-col gap-4">
+      {/* Title + trending badge */}
       <div>
         <div className="flex items-start justify-between gap-2 mb-1">
           <p className="text-sm font-medium leading-snug flex-1 min-w-0" title={track.title}>
             {track.title}
           </p>
-          <span className={`shrink-0 text-[10px] border px-2 py-0.5 rounded-full whitespace-nowrap ${platformClass}`}>
-            {platformLabel}
+          <span
+            className={`shrink-0 text-[11px] font-medium px-1.5 py-0.5 rounded ${
+              track.isTrendingUp
+                ? "text-emerald-700 bg-emerald-50"
+                : "text-red-500 bg-red-50"
+            }`}
+          >
+            {track.isTrendingUp ? "↑" : "↓"}
           </span>
         </div>
         {track.artist && (
@@ -60,31 +68,44 @@ function AudioCard({ track }: { track: TrendingAudioItem }) {
             {track.artist}
           </p>
         )}
-        {track.genre && (
-          <p className="text-[11px] text-black/30 mt-0.5">{track.genre}</p>
+      </div>
+
+      {/* Metrics */}
+      <div className="flex items-center gap-5">
+        {track.playCount > 0 && (
+          <div>
+            <p className="text-xs font-semibold tabular-nums">{fmtCount(track.playCount)}</p>
+            <p className="text-[10px] text-black/35 mt-0.5">plays</p>
+          </div>
+        )}
+        {track.videoCount > 0 && (
+          <div>
+            <p className="text-xs font-semibold tabular-nums">{fmtCount(track.videoCount)}</p>
+            <p className="text-[10px] text-black/35 mt-0.5">videos</p>
+          </div>
         )}
       </div>
 
-      {track.whyItWorks && (
-        <p className="text-xs text-black/55 leading-relaxed">
-          {track.whyItWorks}
-        </p>
-      )}
-
-      <div className="flex items-center justify-between mt-auto">
-        {track.contentStyle && (
-          <p className="text-xs text-black font-medium">→ {track.contentStyle}</p>
-        )}
-        {track.exampleUrl && (
-          <a
-            href={track.exampleUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-black/35 hover:text-black transition-colors whitespace-nowrap ml-auto"
-          >
-            View examples →
-          </a>
-        )}
+      {/* Links */}
+      <div className="flex items-center gap-3 mt-auto">
+        <a
+          href={track.tiktokUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs border border-black/15 px-3 py-1.5 rounded-full hover:bg-black hover:text-white hover:border-black transition-colors whitespace-nowrap"
+        >
+          Open on TikTok →
+        </a>
+        <a
+          href={`https://www.tiktok.com/search?q=${encodeURIComponent(
+            `${track.title} ${track.artist}`.trim()
+          )}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-black/35 hover:text-black transition-colors whitespace-nowrap"
+        >
+          Find videos
+        </a>
       </div>
     </div>
   );
@@ -94,12 +115,12 @@ function AudioCard({ track }: { track: TrendingAudioItem }) {
 
 export default function TrendingAudio() {
   const { activeBrand } = useBrands();
-  const [audio, setAudio] = useState<TrendingAudioItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [audio, setAudio]         = useState<TrendingAudioItem[]>([]);
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
-  const [activeTerm, setActiveTerm] = useState<string | null>(null);
-  const fetchedTermRef = useRef<string | null>(null);
+  const [activeTerm, setActiveTerm]   = useState<string | null>(null);
+  const fetchedRef = useRef<boolean>(false);
 
   const fetchAudio = useCallback(async (term: string) => {
     setLoading(true);
@@ -114,22 +135,21 @@ export default function TrendingAudio() {
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       setAudio(json.audio ?? []);
       setActiveTerm(json.niche ?? term);
-      fetchedTermRef.current = term;
+      fetchedRef.current = true;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to fetch audio suggestions");
+      setError(e instanceof Error ? e.message : "Failed to fetch trending audio");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Auto-fetch when brand switches, only when niche is available
   useEffect(() => {
     if (!activeBrand) return;
     setSearchInput(activeBrand.niche ?? "");
     setAudio([]);
     setError(null);
     setActiveTerm(null);
-    fetchedTermRef.current = null;
+    fetchedRef.current = false;
     if (!activeBrand.niche?.trim()) return;
     fetchAudio(activeBrand.niche);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,14 +157,14 @@ export default function TrendingAudio() {
 
   const handleSearch = () => {
     if (!searchInput.trim() || loading) return;
-    fetchedTermRef.current = null;
+    fetchedRef.current = false;
     fetchAudio(searchInput.trim());
   };
 
   if (!activeBrand) {
     return (
       <div className="bg-white border border-black/10 p-10 text-center">
-        <p className="text-sm text-black/40">Select a brand to see trending audio for your niche.</p>
+        <p className="text-sm text-black/40">Select a brand to see trending audio.</p>
       </div>
     );
   }
@@ -155,7 +175,7 @@ export default function TrendingAudio() {
         <div className="mb-6">
           <h2 className="text-base font-semibold mb-0.5">Trending Audio</h2>
           <p className="text-xs text-black/35">
-            AI-curated songs trending in your niche on TikTok &amp; Instagram Reels
+            Real trending sounds on TikTok — live play counts, video counts and direct links
           </p>
         </div>
 
@@ -166,7 +186,7 @@ export default function TrendingAudio() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-            placeholder="Search a term — e.g. luxury fashion, wedding entrance, fitness motivation…"
+            placeholder="Search a niche — e.g. luxury fashion, wedding, fitness…"
             className="flex-1 border border-black/15 px-4 py-2.5 text-sm placeholder:text-black/25 focus:outline-none focus:border-black/40 transition-colors bg-white"
           />
           <button
@@ -174,7 +194,7 @@ export default function TrendingAudio() {
             disabled={!searchInput.trim() || loading}
             className="shrink-0 text-sm bg-black text-white px-5 py-2.5 hover:bg-black/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
           >
-            {loading ? "Searching…" : "Search"}
+            {loading ? "Loading…" : "Search"}
           </button>
         </div>
 
@@ -188,32 +208,28 @@ export default function TrendingAudio() {
           <AudioSkeleton />
         ) : audio.length === 0 ? (
           <div className="py-12 text-center">
-            <p className="text-sm text-black/35 mb-1">
-              No suggestions yet for &ldquo;{activeTerm ?? searchInput}&rdquo;.
-            </p>
-            <p className="text-xs text-black/25">Try a more specific term or search again.</p>
-            <button
-              onClick={handleSearch}
-              className="mt-5 text-xs border border-black/15 px-5 py-2 rounded-full hover:border-black/40 transition-colors"
-            >
-              Try again
-            </button>
+            <p className="text-sm text-black/35 mb-1">No trending audio loaded yet.</p>
+            <p className="text-xs text-black/25">Enter a niche above and press Search.</p>
           </div>
         ) : (
           <>
             {activeTerm && (
               <div className="mb-5 px-4 py-3 bg-black/[0.03] border border-black/8 text-xs text-black/50">
-                Suggested trending audio for{" "}
-                <span className="font-semibold text-black">{activeTerm}</span>{" "}
-                — search these on{" "}
-                <span className="font-medium text-black">TikTok Sounds</span> or{" "}
-                <span className="font-medium text-black">Instagram Audio</span>
+                Showing trending TikTok sounds — globally trending, refreshed every 6 hours
               </div>
             )}
+
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {audio.map((track) => (
                 <AudioCard key={track.id} track={track} />
               ))}
+            </div>
+
+            {/* Instagram note */}
+            <div className="mt-6 px-4 py-3 border border-black/8 text-xs text-black/45 bg-zinc-50">
+              <span className="font-medium text-black/60">Instagram Reels audio</span> — Instagram
+              trending audio isn&rsquo;t available via API. To find trending sounds for Reels,
+              search the song name directly in Instagram&rsquo;s audio library or Reels tab.
             </div>
           </>
         )}

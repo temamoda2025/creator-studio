@@ -1,19 +1,125 @@
+// TikTok Trending Audio — real data via Apify's TikTok Creative Center Scraper
+//
+// Required Vercel env vars:
+//   APIFY_API_TOKEN  — Personal API token from apify.com/account/integrations
+//   APIFY_ACTOR_ID   — Actor ID from Apify marketplace (optional; defaults below)
+//                      Search apify.com/store for "TikTok Creative Center" to find
+//                      the actor that matches your subscription plan.
+//                      Common options:
+//                        clockworks~free-tiktok-scraper
+//                        lexis-solutions~tiktok-creative-center-scraper
+//
+// The actor should accept input: { period, country, limit }
+// and return an array of music objects with title/name, artist/author,
+// play_count, video_count, and a TikTok music URL or music_id.
+
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 
 export const maxDuration = 30;
-
-const client = new Anthropic();
 
 export interface TrendingAudio {
   id: string;
   title: string;
   artist: string;
-  genre: string;
-  whyItWorks: string;
-  contentStyle: string;
-  platform: "tiktok" | "instagram";
-  exampleUrl: string;
+  playCount: number;
+  videoCount: number;
+  isTrendingUp: boolean;
+  tiktokUrl: string;
+}
+
+// Module-level 6-hour cache (persists across warm serverless invocations)
+const cache = new Map<string, { data: TrendingAudio[]; expires: number }>();
+
+const SIX_HOURS = 6 * 60 * 60 * 1000;
+const DEFAULT_ACTOR = "clockworks~free-tiktok-scraper";
+
+function normalise(item: Record<string, unknown>, i: number): TrendingAudio {
+  const rawId =
+    String(item.music_id ?? item.musicId ?? item.id ?? i);
+  const title = String(
+    item.music_name ?? item.musicName ?? item.title ?? item.name ?? "Unknown"
+  );
+  const artist = String(
+    item.author ?? item.artist ?? item.authorName ?? ""
+  );
+  const playCount = Number(
+    item.play_count ?? item.playCount ?? item.plays ?? 0
+  );
+  const videoCount = Number(
+    item.video_count ?? item.videoCount ?? item.videos ?? 0
+  );
+  const isTrendingUp =
+    item.is_trending_up === true ||
+    item.trendingUp === true ||
+    item.trend === "up" ||
+    item.trending === true ||
+    true; // default optimistic
+
+  // Build TikTok music page URL
+  const tiktokUrl =
+    String(item.url ?? item.musicUrl ?? item.music_url ?? item.tiktok_url ?? "") ||
+    `https://www.tiktok.com/music/${encodeURIComponent(
+      title.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+    )}-${rawId}`;
+
+  return {
+    id: `tt-${rawId}`,
+    title,
+    artist,
+    playCount,
+    videoCount,
+    isTrendingUp,
+    tiktokUrl,
+  };
+}
+
+async function fetchFromApify(limit = 12): Promise<TrendingAudio[]> {
+  const token = process.env.APIFY_API_TOKEN;
+  if (!token) {
+    throw new Error(
+      "APIFY_API_TOKEN is not set. Add it in Vercel → Project Settings → Environment Variables."
+    );
+  }
+
+  const actorId = process.env.APIFY_ACTOR_ID ?? DEFAULT_ACTOR;
+
+  // run-sync-get-dataset-items: starts the actor, waits for it to finish,
+  // and returns the dataset items as a JSON array in one request.
+  const res = await fetch(
+    `https://api.apify.com/v2/acts/${encodeURIComponent(actorId)}/run-sync-get-dataset-items?token=${token}&format=json`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        // Common input fields across TikTok Creative Center scrapers —
+        // adjust these in APIFY_ACTOR_ID actor's input schema if needed
+        period: "7",
+        country: "AU",
+        country_code: "AU",
+        limit,
+        maxItems: limit,
+        type: "music",
+        rank_type: "popular",
+        industry_id: "",
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Apify returned ${res.status}: ${text.slice(0, 200)}`);
+  }
+
+  const items: unknown = await res.json();
+
+  if (!Array.isArray(items)) {
+    throw new Error("Apify response was not an array");
+  }
+
+  return items
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .map(normalise)
+    .filter((t) => t.title !== "Unknown");
 }
 
 export async function POST(request: Request) {
@@ -28,80 +134,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "niche is required" }, { status: 400 });
   }
 
-  const term = niche.trim();
+  // Cache key is fixed — trending data is global, not niche-specific
+  const CACHE_KEY = "tiktok-trending-au";
 
-  const prompt = `You are a social media music curator. Generate 8 currently trending songs perfect for "${term}" content — 4 for TikTok and 4 for Instagram Reels.
-
-Return ONLY a raw JSON array — no markdown fences, no explanation, no text before or after. Each item must have exactly these fields:
-[
-  {
-    "title": "Song title",
-    "artist": "Artist name",
-    "genre": "Genre (2-3 words, e.g. Ambient Pop, Phonk, Lo-fi Hip Hop)",
-    "whyItWorks": "One sentence explaining why this song resonates with ${term} content specifically",
-    "contentStyle": "Suggested reel style (2-5 words, e.g. slow motion entrance, transformation reel, behind the scenes)",
-    "platform": "tiktok or instagram"
-  }
-]
-
-Rules:
-- Return exactly 8 songs: the first 4 must have "platform": "tiktok", the last 4 must have "platform": "instagram"
-- Different songs for each platform — no repeats
-- Focus on songs that have been used in viral content for this category
-- Mix of genres and energy levels across the 8 songs
-- whyItWorks must reference "${term}" specifically — no generic phrases
-- contentStyle must be a specific, actionable format
-- Raw JSON only — no markdown, no code fences, no explanation`;
-
-  const response = await client.messages.create({
-    model: "claude-opus-4-8",
-    max_tokens: 2048,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const raw = response.content
-    .filter((b) => b.type === "text")
-    .map((b) => (b as { type: "text"; text: string }).text)
-    .join("");
-
-  // Extract the JSON array even if Claude wraps it in prose or fences
-  const match = raw.match(/\[[\s\S]*\]/);
-  if (!match) {
-    console.error("[trending-audio] No JSON array found in response:", raw);
+  const cached = cache.get(CACHE_KEY);
+  if (cached && Date.now() < cached.expires) {
     return NextResponse.json(
-      { error: "Failed to parse audio suggestions" },
-      { status: 500 },
+      { audio: cached.data, niche: niche.trim(), cached: true },
+      { headers: { "Cache-Control": "no-store" } }
     );
   }
 
-  let songs: TrendingAudio[];
   try {
-    const parsed = JSON.parse(match[0]);
-    songs = (Array.isArray(parsed) ? parsed : []).map(
-      (s: Record<string, string>, i: number) => {
-        const title = String(s.title ?? "");
-        const artist = String(s.artist ?? "");
-        const platform = s.platform === "instagram" ? "instagram" : "tiktok";
-        const exampleUrl = `https://www.tiktok.com/search?q=${encodeURIComponent(`${title} ${artist}`)}`;
-        return {
-          id: `audio-${i}-${Date.now()}`,
-          title,
-          artist,
-          genre: String(s.genre ?? ""),
-          whyItWorks: String(s.whyItWorks ?? ""),
-          contentStyle: String(s.contentStyle ?? ""),
-          platform,
-          exampleUrl,
-        };
-      },
-    );
-  } catch (e) {
-    console.error("[trending-audio] JSON.parse failed:", e, "\nExtracted:", match[0]);
+    const audio = await fetchFromApify(12);
+
+    if (audio.length === 0) {
+      return NextResponse.json(
+        { error: "No trending audio returned. Check your APIFY_ACTOR_ID actor input schema." },
+        { status: 502 }
+      );
+    }
+
+    cache.set(CACHE_KEY, { data: audio, expires: Date.now() + SIX_HOURS });
+
     return NextResponse.json(
-      { error: "Failed to parse audio suggestions" },
-      { status: 500 },
+      { audio, niche: niche.trim(), cached: false },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  } catch (error) {
+    console.error("[trending-audio]", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to fetch trending audio" },
+      { status: 500 }
     );
   }
-
-  return NextResponse.json({ audio: songs, niche: term });
 }
