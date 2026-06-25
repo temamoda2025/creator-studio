@@ -31,7 +31,7 @@ export interface TrendingAudio {
 const cache = new Map<string, { data: TrendingAudio[]; expires: number }>();
 
 const SIX_HOURS = 6 * 60 * 60 * 1000;
-const DEFAULT_ACTOR = "clockworks~free-tiktok-scraper";
+const DEFAULT_ACTOR = "automation-lab~tiktok-trends-scraper";
 
 function normalise(item: Record<string, unknown>, i: number): TrendingAudio {
   const rawId =
@@ -73,7 +73,7 @@ function normalise(item: Record<string, unknown>, i: number): TrendingAudio {
   };
 }
 
-async function fetchFromApify(limit = 12): Promise<TrendingAudio[]> {
+async function fetchFromApify(term: string, limit = 12): Promise<TrendingAudio[]> {
   const token = process.env.APIFY_API_TOKEN;
   if (!token) {
     throw new Error(
@@ -91,16 +91,12 @@ async function fetchFromApify(limit = 12): Promise<TrendingAudio[]> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        // Common input fields across TikTok Creative Center scrapers —
-        // adjust these in APIFY_ACTOR_ID actor's input schema if needed
-        period: "7",
+        // automation-lab~tiktok-trends-scraper input schema:
+        // https://apify.com/automation-lab/tiktok-trends-scraper
+        keyword: term,
+        period: 7,       // integer: 7 | 30 | 120 days
         country: "AU",
-        country_code: "AU",
         limit,
-        maxItems: limit,
-        type: "music",
-        rank_type: "popular",
-        industry_id: "",
       }),
     }
   );
@@ -134,8 +130,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "niche is required" }, { status: 400 });
   }
 
-  // Cache key is fixed — trending data is global, not niche-specific
-  const CACHE_KEY = "tiktok-trending-au";
+  const CACHE_KEY = `tiktok-au-${niche.trim().toLowerCase()}`;
 
   const cached = cache.get(CACHE_KEY);
   if (cached && Date.now() < cached.expires) {
@@ -146,7 +141,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const audio = await fetchFromApify(12);
+    const audio = await fetchFromApify(niche.trim(), 12);
 
     if (audio.length === 0) {
       return NextResponse.json(
