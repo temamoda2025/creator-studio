@@ -31,7 +31,8 @@
       "Bash(npx vercel *)",
       "Bash(npx next *)",
       "Skill(run)",
-      "Bash(CLAUDE_CODE_TMPDIR=/tmp cat *)"
+      "Bash(CLAUDE_CODE_TMPDIR=/tmp cat *)",
+      "Bash(node *)"
     ]
   }
 }

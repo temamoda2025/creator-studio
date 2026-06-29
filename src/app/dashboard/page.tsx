@@ -331,12 +331,44 @@ function ErrorBanner({ message }: { message: string }) {
   );
 }
 
+// ─── Strategy field ───────────────────────────────────────────────────────────
+
+function StrategyField({
+  label,
+  sublabel,
+  value,
+}: {
+  label: string;
+  sublabel?: string;
+  value: string | undefined;
+}) {
+  return (
+    <div>
+      <p className="text-xs text-black/40 mb-1">
+        {label}
+        {sublabel && <span className="text-black/25"> — {sublabel}</span>}
+      </p>
+      {value ? (
+        <p className="text-sm text-black/80 leading-relaxed">{value}</p>
+      ) : (
+        <p className="text-sm text-black/25 italic">
+          Not set yet —{" "}
+          <Link href="/brands" className="underline underline-offset-2 hover:text-black/50 transition-colors">
+            edit on Brands page
+          </Link>
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "research" | "trending-audio" | "content-generator" | "reel-scripts" | "design-creator" | "history" | "calendar" | "analytics";
+type Tab = "overview" | "strategy" | "research" | "trending-audio" | "content-generator" | "reel-scripts" | "design-creator" | "history" | "calendar" | "analytics";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview",          label: "Overview"           },
+  { id: "strategy",          label: "Strategy"           },
   { id: "research",          label: "Content Research"   },
   { id: "trending-audio",    label: "Trending Audio"     },
   { id: "content-generator", label: "Content Generator"  },
@@ -859,6 +891,111 @@ export default function DashboardPage() {
                 </>
               )}
             </>
+          )}
+
+          {/* ── Strategy ── */}
+          {tab === "strategy" && (
+            <div className="space-y-6">
+              {!activeBrand ? (
+                <div className="bg-white border border-black/10 p-10 text-center">
+                  <p className="text-sm text-black/40 mb-4">Select a brand to view its strategy.</p>
+                  <Link href="/brands" className="text-sm bg-black text-white px-6 py-2.5 rounded-full hover:bg-black/80 transition-colors">
+                    Go to Brands →
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  {/* Header */}
+                  <div className="bg-white border border-black/10 p-8">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs tracking-[0.25em] uppercase text-black/30 mb-1">StoryBrand Framework</p>
+                        <h2 className="text-xl font-semibold tracking-tight">{activeBrand.name} — Brand Strategy</h2>
+                      </div>
+                      <Link
+                        href="/brands"
+                        className="shrink-0 text-xs border border-black/15 px-4 py-2 rounded-full hover:border-black/40 hover:text-black transition-colors text-black/50"
+                      >
+                        Edit Strategy →
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* The Hero + Problems */}
+                  <div className="bg-white border border-black/10 p-8">
+                    <p className="text-xs tracking-[0.2em] uppercase text-black/30 mb-6">The Hero & The Problems</p>
+                    <div className="space-y-5">
+                      <StrategyField label="Who is the hero?" value={activeBrand.strategy?.heroDescription} />
+                      <StrategyField label="External Problem" sublabel="the surface issue" value={activeBrand.strategy?.externalProblem} />
+                      <StrategyField label="Internal Problem" sublabel="the emotional weight" value={activeBrand.strategy?.internalProblem} />
+                      <StrategyField label="Philosophical Problem" sublabel="the injustice" value={activeBrand.strategy?.philosophicalProblem} />
+                    </div>
+                  </div>
+
+                  {/* Guide + Plan */}
+                  <div className="bg-white border border-black/10 p-8">
+                    <p className="text-xs tracking-[0.2em] uppercase text-black/30 mb-6">The Guide & The Plan</p>
+                    <div className="space-y-5">
+                      <StrategyField label="Guide Role" sublabel="empathy + authority positioning" value={activeBrand.strategy?.guideRole} />
+                      {activeBrand.strategy?.threeStepPlan?.some(Boolean) ? (
+                        <div>
+                          <p className="text-xs text-black/40 mb-2">3-Step Plan</p>
+                          <div className="flex items-start gap-3">
+                            {activeBrand.strategy.threeStepPlan.map((step, i) => (
+                              <div key={i} className="flex-1 border border-black/8 p-3">
+                                <p className="text-[10px] text-black/30 uppercase tracking-wider mb-1">Step {i + 1}</p>
+                                <p className="text-sm text-black/75 leading-snug">{step || <span className="text-black/25 italic">Not set</span>}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <StrategyField label="3-Step Plan" value={undefined} />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* CTAs */}
+                  <div className="bg-white border border-black/10 p-8">
+                    <p className="text-xs tracking-[0.2em] uppercase text-black/30 mb-6">Calls to Action</p>
+                    <div className="grid sm:grid-cols-2 gap-5">
+                      <StrategyField label="Direct CTA" sublabel="primary action" value={activeBrand.strategy?.directCta} />
+                      <StrategyField label="Transitional CTA" sublabel="softer engagement" value={activeBrand.strategy?.transitionalCta} />
+                    </div>
+                  </div>
+
+                  {/* Stakes + Transformation */}
+                  <div className="bg-white border border-black/10 p-8">
+                    <p className="text-xs tracking-[0.2em] uppercase text-black/30 mb-6">Stakes & Transformation</p>
+                    <div className="space-y-5">
+                      <StrategyField label="Stakes" sublabel="the failure scenario" value={activeBrand.strategy?.stakes} />
+                      <StrategyField label="Transformation" sublabel="the success picture" value={activeBrand.strategy?.transformation} />
+                    </div>
+                  </div>
+
+                  {/* Content Strategy */}
+                  <div className="bg-white border border-black/10 p-8">
+                    <p className="text-xs tracking-[0.2em] uppercase text-black/30 mb-6">Content Strategy</p>
+                    <div className="space-y-5">
+                      {activeBrand.strategy?.contentPillars?.length ? (
+                        <div>
+                          <p className="text-xs text-black/40 mb-3">Content Pillars</p>
+                          <div className="flex flex-wrap gap-2">
+                            {activeBrand.strategy.contentPillars.map((p) => (
+                              <span key={p} className="text-xs bg-black text-white px-3 py-1.5 rounded-full">{p}</span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <StrategyField label="Content Pillars" value={undefined} />
+                      )}
+                      <StrategyField label="Storytelling Angle" value={activeBrand.strategy?.storytellingAngle} />
+                      <StrategyField label="Posting Cadence" value={activeBrand.strategy?.postingCadence} />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           )}
 
           {/* ── Content Research ── */}

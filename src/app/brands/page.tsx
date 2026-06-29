@@ -204,7 +204,7 @@ function BrandForm({
   onCancel: () => void;
   title: string;
 }) {
-  const [showStrategy, setShowStrategy] = React.useState(false);
+  const [showStrategy, setShowStrategy] = React.useState(true);
 
   const set = <K extends keyof FormState>(key: K, val: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: val }));
