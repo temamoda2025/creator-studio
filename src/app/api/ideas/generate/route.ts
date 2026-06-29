@@ -168,6 +168,42 @@ interface BrandVoicePayload {
   captionExample?: string;
 }
 
+interface BrandStrategyPayload {
+  heroDescription?: string;
+  externalProblem?: string;
+  internalProblem?: string;
+  philosophicalProblem?: string;
+  guideRole?: string;
+  threeStepPlan?: [string, string, string];
+  directCta?: string;
+  transitionalCta?: string;
+  stakes?: string;
+  transformation?: string;
+  contentPillars?: string[];
+  storytellingAngle?: string;
+  postingCadence?: string;
+}
+
+function buildStrategyBlock(s: BrandStrategyPayload | null | undefined): string {
+  if (!s) return "";
+  const lines: string[] = [];
+  if (s.heroDescription)      lines.push(`**Hero:** ${s.heroDescription}`);
+  if (s.externalProblem)      lines.push(`**External Problem:** ${s.externalProblem}`);
+  if (s.internalProblem)      lines.push(`**Internal Problem:** ${s.internalProblem}`);
+  if (s.philosophicalProblem) lines.push(`**Philosophical Problem:** ${s.philosophicalProblem}`);
+  if (s.guideRole)            lines.push(`**Guide Role:** ${s.guideRole}`);
+  if (s.threeStepPlan?.some(Boolean))
+    lines.push(`**The 3-Step Plan:** 1. ${s.threeStepPlan[0]} → 2. ${s.threeStepPlan[1]} → 3. ${s.threeStepPlan[2]}`);
+  if (s.directCta)            lines.push(`**Direct CTA:** "${s.directCta}"`);
+  if (s.transitionalCta)      lines.push(`**Transitional CTA:** "${s.transitionalCta}"`);
+  if (s.stakes)               lines.push(`**Stakes (failure):** ${s.stakes}`);
+  if (s.transformation)       lines.push(`**Transformation (success):** ${s.transformation}`);
+  if (s.contentPillars?.length) lines.push(`**Content Pillars:** ${s.contentPillars.join(", ")}`);
+  if (s.storytellingAngle)    lines.push(`**Storytelling Angle:** ${s.storytellingAngle}`);
+  if (lines.length === 0) return "";
+  return `\n## StoryBrand Strategy\n${lines.join("\n")}\n`;
+}
+
 function buildBrandPrompt(
   brandName: string,
   niche: string,
@@ -176,6 +212,7 @@ function buildBrandPrompt(
   mission: string | null,
   vision: string | null,
   brandVoice: BrandVoicePayload | null,
+  strategy: BrandStrategyPayload | null = null,
 ): string {
   // Resolve dominant side of each voice trait slider
   const traitsLine = brandVoice?.traits?.length
@@ -203,19 +240,25 @@ function buildBrandPrompt(
       : null,
   ].filter(Boolean).join("\n");
 
+  const strategyBlock = buildStrategyBlock(strategy);
+  const pillarInstruction = strategy?.contentPillars?.length
+    ? `\n**Pillar rule:** Use these exact content pillars as the primary source for ideas — do not invent new pillar names: ${strategy.contentPillars.join(", ")}. Distribute the 5 ideas across these pillars.`
+    : "";
+
   return `Generate 5 high-quality, specific social media content ideas for ${brandName} — a ${niche} brand.
 
 ${context}
 ${voice ? `\n## Brand Voice\n${voice}` : ""}
-
+${strategyBlock}
 ## Your Task
 
-Generate 5 content ideas that could ONLY have been written for ${brandName}. Not templates — the hooks must feel like they came from inside this brand, from someone who has lived in this world for years.
+Generate 5 content ideas that could ONLY have been written for ${brandName}. Not templates — the hooks must feel like they came from inside this brand, from someone who has lived in this world for years.${pillarInstruction}
 
 Quality bar:
 - Specific scenarios, not general topics ("The client who almost cancelled because she didn't own one piece that fit" beats "wardrobe tips")
 - Real texture: include numbers, timeframes, emotions, turning points wherever authentic
 - Hooks in first or second person that land like a confession, a challenge, or a revelation
+- If StoryBrand strategy is defined: hooks should reference the hero's internal problem, the transformation, or the stakes — not just describe a topic
 - Never generic — if a hook could apply to any ${niche} brand, it is not good enough
 
 Return ONLY a raw JSON array — no markdown, no code fences, no preamble. Each item must match this exact shape:
@@ -247,6 +290,7 @@ const TOPIC_PROMPT = (
   temaModa: boolean,
   brandName: string,
   brandVoice: BrandVoicePayload | null,
+  strategy: BrandStrategyPayload | null = null,
 ) => {
   const traitsLine = brandVoice?.traits?.length
     ? brandVoice.traits
@@ -271,10 +315,12 @@ const TOPIC_PROMPT = (
         brandVoice?.captionExample ? `Voice example: "${brandVoice.captionExample}"` : null,
       ].filter(Boolean).join(" ");
 
+  const strategyBlock = buildStrategyBlock(strategy);
+
   return `Generate 5 high-quality, specific social media content ideas on the topic of "${topic}".
 
 ${voiceBlock}
-
+${strategyBlock}
 Return ONLY a raw JSON array — no markdown, no code fences, no preamble. Each item must match this exact shape:
 [
   {
@@ -297,7 +343,7 @@ export async function POST(request: Request) {
   try {
     const {
       niche, targetAudience, positioning, brandName, topic,
-      mission, vision, brandVoice,
+      mission, vision, brandVoice, strategy,
     } = await request.json();
 
     if (!niche) {
@@ -309,17 +355,20 @@ export async function POST(request: Request) {
     const natasha  = !vanessa && !astra && isNatasha(brandName ?? "", niche);
     const temaModa = !vanessa && !astra && !natasha && isTemaModa(brandName ?? "", niche);
 
+    const strategyPayload: BrandStrategyPayload | null = strategy ?? null;
+    const strategyAppendix = buildStrategyBlock(strategyPayload);
+
     const baseMessage = topic
-      ? TOPIC_PROMPT(topic, niche, targetAudience, positioning, vanessa, astra, natasha, temaModa, brandName ?? "", brandVoice ?? null)
+      ? TOPIC_PROMPT(topic, niche, targetAudience, positioning, vanessa, astra, natasha, temaModa, brandName ?? "", brandVoice ?? null, strategyPayload)
       : vanessa
-        ? VANESSA_PROMPT
+        ? VANESSA_PROMPT + (strategyAppendix ? `\n${strategyAppendix}` : "")
         : astra
-          ? ASTRA_PROMPT
+          ? ASTRA_PROMPT + (strategyAppendix ? `\n${strategyAppendix}` : "")
           : natasha
-            ? NATASHA_PROMPT
+            ? NATASHA_PROMPT + (strategyAppendix ? `\n${strategyAppendix}` : "")
             : temaModa
-              ? TEMA_MODA_PROMPT
-              : buildBrandPrompt(brandName ?? "", niche, targetAudience, positioning ?? null, mission ?? null, vision ?? null, brandVoice ?? null);
+              ? TEMA_MODA_PROMPT + (strategyAppendix ? `\n${strategyAppendix}` : "")
+              : buildBrandPrompt(brandName ?? "", niche, targetAudience, positioning ?? null, mission ?? null, vision ?? null, brandVoice ?? null, strategyPayload);
 
     const userMessage = `${baseMessage}\n\n[ts:${Date.now()}]`;
 

@@ -84,6 +84,42 @@ You return structured JSON only. No markdown fences. No explanation. No preamble
 
 Note: "slides" is ONLY included when the format is Carousel. Omit the field entirely for all other formats.`;
 
+interface BrandStrategyPayload {
+  heroDescription?: string;
+  externalProblem?: string;
+  internalProblem?: string;
+  philosophicalProblem?: string;
+  guideRole?: string;
+  threeStepPlan?: [string, string, string];
+  directCta?: string;
+  transitionalCta?: string;
+  stakes?: string;
+  transformation?: string;
+  contentPillars?: string[];
+  storytellingAngle?: string;
+  postingCadence?: string;
+}
+
+function buildStrategyBlock(s: BrandStrategyPayload | null | undefined): string {
+  if (!s) return "";
+  const lines: string[] = [];
+  if (s.heroDescription)      lines.push(`**Hero:** ${s.heroDescription}`);
+  if (s.externalProblem)      lines.push(`**External Problem:** ${s.externalProblem}`);
+  if (s.internalProblem)      lines.push(`**Internal Problem:** ${s.internalProblem}`);
+  if (s.philosophicalProblem) lines.push(`**Philosophical Problem:** ${s.philosophicalProblem}`);
+  if (s.guideRole)            lines.push(`**Guide Role:** ${s.guideRole}`);
+  if (s.threeStepPlan?.some(Boolean))
+    lines.push(`**The 3-Step Plan:** 1. ${s.threeStepPlan[0]} → 2. ${s.threeStepPlan[1]} → 3. ${s.threeStepPlan[2]}`);
+  if (s.directCta)            lines.push(`**Direct CTA:** "${s.directCta}"`);
+  if (s.transitionalCta)      lines.push(`**Transitional CTA:** "${s.transitionalCta}"`);
+  if (s.stakes)               lines.push(`**Stakes (failure):** ${s.stakes}`);
+  if (s.transformation)       lines.push(`**Transformation (success):** ${s.transformation}`);
+  if (s.contentPillars?.length) lines.push(`**Content Pillars:** ${s.contentPillars.join(", ")}`);
+  if (s.storytellingAngle)    lines.push(`**Storytelling Angle:** ${s.storytellingAngle}`);
+  if (lines.length === 0) return "";
+  return `\n## StoryBrand Strategy\n${lines.join("\n")}\n`;
+}
+
 export async function POST(request: Request) {
   try {
     const {
@@ -94,6 +130,7 @@ export async function POST(request: Request) {
       tone,
       brandVoice,
       brandPositioning,
+      brandStrategy,
       imageBase64,
       imageMimeType,
     } = await request.json();
@@ -140,6 +177,8 @@ export async function POST(request: Request) {
       ? `**Brand Positioning:** ${brandPositioning}\n`
       : "";
 
+    const strategySection = buildStrategyBlock(brandStrategy as BrandStrategyPayload | null);
+
     const hasImage = !!imageBase64;
 
     const userMessage = `Generate ADORAR™ content for this brand and idea.${hasImage ? " You have been provided with the actual image for this post — study it carefully. The caption must feel like it was written specifically for this exact visual. Reference what you see: the mood, the composition, the colours, the story the image tells. The visual and caption must feel inseparable." : ""}
@@ -148,7 +187,7 @@ export async function POST(request: Request) {
 ${positioningLine}**Target Audience:** ${targetAudience || "Not specified — infer from brand context"}
 **Content Idea / Topic:** ${contentIdea}
 **Format:** ${format} — ${selectedFormatGuidance}
-${selectedToneGuidance}${voiceSection}
+${selectedToneGuidance}${voiceSection}${strategySection}
 ## Your Task
 
 1. Run a full ADORAR™ analysis on this content idea — go deep on each layer. This is the strategic foundation that everything else is built on.${hasImage ? " Let the image inform every layer of the analysis." : ""}
@@ -172,7 +211,16 @@ ${format === "Carousel" ? `
 ## Voice Calibration
 
 Write the caption for ${brandName}. The brand voice should feel authentic to who ${brandName} is — not generic, not over-produced, not like a template. Every brand has a frequency; find theirs and write at it.
+${strategySection ? `
+## StoryBrand Directive
 
+If StoryBrand Strategy is defined above, apply it as follows:
+- The customer is the hero — position ${brandName} as guide, mentor, or key, never the hero
+- Let the hero's internal problem inform the emotional hook
+- Reference the transformation or stakes where authentic — not forced
+- Use the provided Direct or Transitional CTA verbatim in the CTA field (or adapt it to the format)
+- If content pillars are defined, align this piece to the closest matching pillar
+` : ""}
 Return ONLY the raw JSON object. No markdown. No code fences. No preamble.`;
 
     const messageContent: Anthropic.ContentBlockParam[] = [];

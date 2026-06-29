@@ -12,6 +12,22 @@ export interface BrandVoice {
   captionExample?: string;
 }
 
+export interface BrandStrategy {
+  heroDescription?: string;
+  externalProblem?: string;
+  internalProblem?: string;
+  philosophicalProblem?: string;
+  guideRole?: string;
+  threeStepPlan?: [string, string, string];
+  directCta?: string;
+  transitionalCta?: string;
+  stakes?: string;
+  transformation?: string;
+  contentPillars?: string[];
+  storytellingAngle?: string;
+  postingCadence?: string;
+}
+
 export interface Brand {
   id: string;
   name: string;
@@ -23,6 +39,7 @@ export interface Brand {
   mission?: string;
   vision?: string;
   brandVoice: BrandVoice;
+  strategy?: BrandStrategy;
   createdAt: string;
   updatedAt: string;
 }

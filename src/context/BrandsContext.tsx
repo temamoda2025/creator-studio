@@ -24,6 +24,12 @@ interface BrandsContextValue {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function rowToBrand(row: Record<string, any>): Brand {
+  const hasStrategy =
+    row.hero_description || row.external_problem || row.internal_problem ||
+    row.philosophical_problem || row.guide_role || row.three_step_plan ||
+    row.direct_cta || row.transitional_cta || row.stakes || row.transformation ||
+    row.content_pillars || row.storytelling_angle || row.posting_cadence;
+
   return {
     id: row.id,
     name: row.name,
@@ -35,6 +41,21 @@ function rowToBrand(row: Record<string, any>): Brand {
     mission: row.mission ?? undefined,
     vision: row.vision ?? undefined,
     brandVoice: row.brand_voice ?? { traits: [] },
+    strategy: hasStrategy ? {
+      heroDescription:      row.hero_description      ?? undefined,
+      externalProblem:      row.external_problem      ?? undefined,
+      internalProblem:      row.internal_problem      ?? undefined,
+      philosophicalProblem: row.philosophical_problem ?? undefined,
+      guideRole:            row.guide_role            ?? undefined,
+      threeStepPlan:        row.three_step_plan       ?? undefined,
+      directCta:            row.direct_cta            ?? undefined,
+      transitionalCta:      row.transitional_cta      ?? undefined,
+      stakes:               row.stakes                ?? undefined,
+      transformation:       row.transformation        ?? undefined,
+      contentPillars:       row.content_pillars       ?? undefined,
+      storytellingAngle:    row.storytelling_angle    ?? undefined,
+      postingCadence:       row.posting_cadence       ?? undefined,
+    } : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
   };
@@ -69,6 +90,7 @@ export function BrandsProvider({ children }: { children: ReactNode }) {
 
   const addBrand = useCallback(
     async (data: Omit<Brand, "id" | "createdAt" | "updatedAt">): Promise<Brand> => {
+      const s = data.strategy;
       const { data: row, error } = await supabase
         .from("brands")
         .insert({
@@ -82,6 +104,19 @@ export function BrandsProvider({ children }: { children: ReactNode }) {
           mission: data.mission ?? null,
           vision: data.vision ?? null,
           brand_voice: data.brandVoice,
+          hero_description:      s?.heroDescription      ?? null,
+          external_problem:      s?.externalProblem      ?? null,
+          internal_problem:      s?.internalProblem      ?? null,
+          philosophical_problem: s?.philosophicalProblem ?? null,
+          guide_role:            s?.guideRole            ?? null,
+          three_step_plan:       s?.threeStepPlan        ?? null,
+          direct_cta:            s?.directCta            ?? null,
+          transitional_cta:      s?.transitionalCta      ?? null,
+          stakes:                s?.stakes               ?? null,
+          transformation:        s?.transformation       ?? null,
+          content_pillars:       s?.contentPillars       ?? null,
+          storytelling_angle:    s?.storytellingAngle    ?? null,
+          posting_cadence:       s?.postingCadence       ?? null,
         })
         .select()
         .single();
@@ -107,6 +142,22 @@ export function BrandsProvider({ children }: { children: ReactNode }) {
       if (data.mission !== undefined) patch.mission = data.mission ?? null;
       if (data.vision !== undefined) patch.vision = data.vision ?? null;
       if (data.brandVoice !== undefined) patch.brand_voice = data.brandVoice;
+      if (data.strategy !== undefined) {
+        const s = data.strategy;
+        patch.hero_description      = s?.heroDescription      ?? null;
+        patch.external_problem      = s?.externalProblem      ?? null;
+        patch.internal_problem      = s?.internalProblem      ?? null;
+        patch.philosophical_problem = s?.philosophicalProblem ?? null;
+        patch.guide_role            = s?.guideRole            ?? null;
+        patch.three_step_plan       = s?.threeStepPlan        ?? null;
+        patch.direct_cta            = s?.directCta            ?? null;
+        patch.transitional_cta      = s?.transitionalCta      ?? null;
+        patch.stakes                = s?.stakes               ?? null;
+        patch.transformation        = s?.transformation       ?? null;
+        patch.content_pillars       = s?.contentPillars       ?? null;
+        patch.storytelling_angle    = s?.storytellingAngle    ?? null;
+        patch.posting_cadence       = s?.postingCadence       ?? null;
+      }
 
       const { data: row, error } = await supabase
         .from("brands")

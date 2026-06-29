@@ -83,9 +83,45 @@ const DURATION_GUIDANCE: Record<string, string> = {
     "90 seconds total. Structure: hook (0:00–0:03), 4–5 scenes (0:03–1:22), CTA (1:22–1:30). This is the long-form Reel — use it for complex transformations, tutorials, or brand stories. Each scene 15–20 seconds. The viewer is fully opted in by scene 2; reward that with depth and detail. Build to a crescendo before the CTA.",
 };
 
+interface BrandStrategyPayload {
+  heroDescription?: string;
+  externalProblem?: string;
+  internalProblem?: string;
+  philosophicalProblem?: string;
+  guideRole?: string;
+  threeStepPlan?: [string, string, string];
+  directCta?: string;
+  transitionalCta?: string;
+  stakes?: string;
+  transformation?: string;
+  contentPillars?: string[];
+  storytellingAngle?: string;
+  postingCadence?: string;
+}
+
+function buildStrategyBlock(s: BrandStrategyPayload | null | undefined): string {
+  if (!s) return "";
+  const lines: string[] = [];
+  if (s.heroDescription)      lines.push(`**Hero:** ${s.heroDescription}`);
+  if (s.externalProblem)      lines.push(`**External Problem:** ${s.externalProblem}`);
+  if (s.internalProblem)      lines.push(`**Internal Problem:** ${s.internalProblem}`);
+  if (s.philosophicalProblem) lines.push(`**Philosophical Problem:** ${s.philosophicalProblem}`);
+  if (s.guideRole)            lines.push(`**Guide Role:** ${s.guideRole}`);
+  if (s.threeStepPlan?.some(Boolean))
+    lines.push(`**The 3-Step Plan:** 1. ${s.threeStepPlan[0]} → 2. ${s.threeStepPlan[1]} → 3. ${s.threeStepPlan[2]}`);
+  if (s.directCta)            lines.push(`**Direct CTA:** "${s.directCta}"`);
+  if (s.transitionalCta)      lines.push(`**Transitional CTA:** "${s.transitionalCta}"`);
+  if (s.stakes)               lines.push(`**Stakes (failure):** ${s.stakes}`);
+  if (s.transformation)       lines.push(`**Transformation (success):** ${s.transformation}`);
+  if (s.contentPillars?.length) lines.push(`**Content Pillars:** ${s.contentPillars.join(", ")}`);
+  if (s.storytellingAngle)    lines.push(`**Storytelling Angle:** ${s.storytellingAngle}`);
+  if (lines.length === 0) return "";
+  return `\n## StoryBrand Strategy\n${lines.join("\n")}\n`;
+}
+
 export async function POST(request: Request) {
   try {
-    const { topic, brandName, targetAudience, duration, brandVoice, brandPositioning } =
+    const { topic, brandName, targetAudience, duration, brandVoice, brandPositioning, brandStrategy } =
       await request.json();
 
     if (!topic || !brandName || !duration) {
@@ -108,12 +144,27 @@ export async function POST(request: Request) {
       ? `**Brand Positioning:** ${brandPositioning}\n`
       : "";
 
+    const strategySection = buildStrategyBlock(brandStrategy as BrandStrategyPayload | null);
+
+    const storyBrandDirective = strategySection
+      ? `
+## StoryBrand Narrative Directive
+
+If StoryBrand Strategy is defined above, structure the script as a StoryBrand story:
+- **Hook** → speak directly to the hero's internal or external problem — the felt emotion, the frustration, the before-state
+- **Main scenes** → position ${brandName} as the guide: show empathy, authority, and the 3-step plan if available
+- **Near the CTA** → briefly paint the transformation (who they become) or acknowledge the stakes (what happens if they don't act)
+- **CTA** → use the Direct CTA verbatim if possible, or the Transitional CTA for a softer close
+- The customer is always the hero. ${brandName} is always the guide. Never reverse this.
+`
+      : "";
+
     const userMessage = `Write a ${duration} Instagram Reel script for this brand and topic.
 
 **Brand:** ${brandName}
 ${positioningLine}**Target Audience:** ${targetAudience || "Infer from brand context"}
 **Topic:** ${topic}
-${voiceSection}
+${voiceSection}${strategySection}${storyBrandDirective}
 ## Duration & Structure
 
 ${durationGuide}

@@ -231,6 +231,7 @@ export default function ReelScriptGenerator() {
           targetAudience: selectedBrand?.targetAudience ?? "",
           brandVoice: selectedBrand?.brandVoice ?? null,
           brandPositioning: selectedBrand?.positioning ?? null,
+          brandStrategy: selectedBrand?.strategy ?? null,
         }),
       });
 

@@ -316,6 +316,7 @@ export default function ContentGenerator({
           tone,
           brandVoice: activeBrand?.brandVoice ?? null,
           brandPositioning: activeBrand?.positioning ?? null,
+          brandStrategy: activeBrand?.strategy ?? null,
           imageBase64,
           imageMimeType,
         }),

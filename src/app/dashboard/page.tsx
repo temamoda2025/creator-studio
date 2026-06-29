@@ -422,6 +422,7 @@ export default function DashboardPage() {
         mission: brand.mission ?? null,
         vision: brand.vision ?? null,
         brandVoice: brand.brandVoice ?? null,
+        strategy: brand.strategy ?? null,
       }),
     })
       .then((r) => r.json())
@@ -458,6 +459,7 @@ export default function DashboardPage() {
         mission: activeBrand.mission ?? null,
         vision: activeBrand.vision ?? null,
         brandVoice: activeBrand.brandVoice ?? null,
+        strategy: activeBrand.strategy ?? null,
         topic: topic.trim(),
       }),
     })
