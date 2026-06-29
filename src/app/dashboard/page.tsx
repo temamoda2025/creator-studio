@@ -654,6 +654,70 @@ export default function DashboardPage() {
                     </>
                   )}
 
+                  {/* Strategy Reference */}
+                  {(() => {
+                    const s = activeBrand.strategy;
+                    const pillars = s?.contentPillars?.slice(0, 3) ?? [];
+                    const empty = !s?.heroDescription && pillars.length === 0 && !s?.stakes && !s?.transformation;
+                    return (
+                      <div className="bg-white border border-black/10 p-6">
+                        <div className="flex items-center justify-between mb-5">
+                          <p className="text-xs font-medium text-black/50 uppercase tracking-wider">Strategy Reference</p>
+                          <Link href="/brands" className="text-xs text-black/30 hover:text-black transition-colors">
+                            Edit →
+                          </Link>
+                        </div>
+                        {empty ? (
+                          <p className="text-sm text-black/30 italic">
+                            No strategy set.{" "}
+                            <Link href="/brands" className="underline underline-offset-2 hover:text-black/60 transition-colors">
+                              Add StoryBrand strategy on the Brands page →
+                            </Link>
+                          </p>
+                        ) : (
+                          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-4">
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-black/30 mb-1">Hero</p>
+                              {s?.heroDescription ? (
+                                <p className="text-xs text-black/70 leading-relaxed line-clamp-2">{s.heroDescription}</p>
+                              ) : (
+                                <Link href="/brands" className="text-xs text-black/25 italic hover:text-black/50 transition-colors">Not set — Edit on Brands page →</Link>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-black/30 mb-1">Content Pillars</p>
+                              {pillars.length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {pillars.map((p) => (
+                                    <span key={p} className="text-[10px] bg-black text-white px-2 py-0.5 rounded-full">{p}</span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <Link href="/brands" className="text-xs text-black/25 italic hover:text-black/50 transition-colors">Not set — Edit on Brands page →</Link>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-black/30 mb-1">Stakes</p>
+                              {s?.stakes ? (
+                                <p className="text-xs text-black/70 leading-relaxed line-clamp-2">{s.stakes}</p>
+                              ) : (
+                                <Link href="/brands" className="text-xs text-black/25 italic hover:text-black/50 transition-colors">Not set — Edit on Brands page →</Link>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-black/30 mb-1">Transformation</p>
+                              {s?.transformation ? (
+                                <p className="text-xs text-black/70 leading-relaxed line-clamp-2">{s.transformation}</p>
+                              ) : (
+                                <Link href="/brands" className="text-xs text-black/25 italic hover:text-black/50 transition-colors">Not set — Edit on Brands page →</Link>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   <SocialConnections brandId={activeBrand.id} />
 
                   <div className="grid sm:grid-cols-3 gap-6">
