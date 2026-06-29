@@ -47,6 +47,9 @@ interface StrategyFormState {
   contentPillars: string; // comma-separated in UI, array when saved
   storytellingAngle: string;
   postingCadence: string;
+  personalQuotes: string;   // newline-separated
+  lifestyleTopics: string;  // newline-separated
+  btsTopics: string;        // newline-separated
 }
 
 interface FormState {
@@ -76,6 +79,9 @@ const emptyStrategy: StrategyFormState = {
   contentPillars: "",
   storytellingAngle: "",
   postingCadence: "",
+  personalQuotes: "",
+  lifestyleTopics: "",
+  btsTopics: "",
 };
 
 const emptyForm: FormState = {
@@ -118,6 +124,9 @@ function brandToForm(b: Brand): FormState {
       contentPillars:       s?.contentPillars?.join(", ") ?? "",
       storytellingAngle:    s?.storytellingAngle    ?? "",
       postingCadence:       s?.postingCadence       ?? "",
+      personalQuotes:       s?.personalQuotes?.join("\n")  ?? "",
+      lifestyleTopics:      s?.lifestyleTopics?.join("\n") ?? "",
+      btsTopics:            s?.btsTopics?.join("\n")       ?? "",
     },
   };
 }
@@ -133,7 +142,8 @@ function formToBrand(f: FormState): Omit<Brand, "id" | "createdAt" | "updatedAt"
     s.heroDescription || s.externalProblem || s.internalProblem ||
     s.philosophicalProblem || s.guideRole || threeStepPlan.some(Boolean) ||
     s.directCta || s.transitionalCta || s.stakes || s.transformation ||
-    contentPillars.length > 0 || s.storytellingAngle || s.postingCadence;
+    contentPillars.length > 0 || s.storytellingAngle || s.postingCadence ||
+    s.personalQuotes.trim() || s.lifestyleTopics.trim() || s.btsTopics.trim();
 
   return {
     name: f.name.trim(),
@@ -161,6 +171,12 @@ function formToBrand(f: FormState): Omit<Brand, "id" | "createdAt" | "updatedAt"
       contentPillars:       contentPillars.length > 0 ? contentPillars : undefined,
       storytellingAngle:    s.storytellingAngle.trim()    || undefined,
       postingCadence:       s.postingCadence.trim()       || undefined,
+      personalQuotes:  s.personalQuotes.split("\n").map(l => l.trim()).filter(Boolean).length > 0
+        ? s.personalQuotes.split("\n").map(l => l.trim()).filter(Boolean) : undefined,
+      lifestyleTopics: s.lifestyleTopics.split("\n").map(l => l.trim()).filter(Boolean).length > 0
+        ? s.lifestyleTopics.split("\n").map(l => l.trim()).filter(Boolean) : undefined,
+      btsTopics:       s.btsTopics.split("\n").map(l => l.trim()).filter(Boolean).length > 0
+        ? s.btsTopics.split("\n").map(l => l.trim()).filter(Boolean) : undefined,
     } : undefined,
   };
 }
@@ -205,6 +221,7 @@ function BrandForm({
   title: string;
 }) {
   const [showStrategy, setShowStrategy] = React.useState(true);
+  const [showLifestyle, setShowLifestyle] = React.useState(true);
 
   const set = <K extends keyof FormState>(key: K, val: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: val }));
@@ -558,6 +575,58 @@ function BrandForm({
                 </div>
               </div>
 
+            </div>
+          )}
+        </div>
+        {/* Personal & Lifestyle */}
+        <div className="border-t border-black/8 pt-8">
+          <button
+            type="button"
+            onClick={() => setShowLifestyle((v) => !v)}
+            className="flex items-center justify-between w-full group mb-1"
+          >
+            <div>
+              <p className="text-xs tracking-[0.2em] uppercase text-black/30 group-hover:text-black/50 transition-colors text-left">
+                Personal & Lifestyle
+              </p>
+              <p className="text-[11px] text-black/25 mt-0.5 text-left">
+                Quotes, lifestyle themes, and BTS topics for the Journey content planner
+              </p>
+            </div>
+            <span className="text-black/30 group-hover:text-black/60 transition-colors text-sm">
+              {showLifestyle ? "▴" : "▾"}
+            </span>
+          </button>
+
+          {showLifestyle && (
+            <div className="mt-6 space-y-6">
+              <Field label="Quotes you live by — one per line">
+                <textarea
+                  value={form.strategy.personalQuotes}
+                  onChange={(e) => setStrategy("personalQuotes", e.target.value)}
+                  placeholder={"\"The first step in solving any problem is recognising there is one.\"\n\"Done is better than perfect.\"\n\"Money is a tool, not a destination.\""}
+                  rows={4}
+                  className={`${inputCls} resize-none`}
+                />
+              </Field>
+              <Field label="Lifestyle themes — one per line">
+                <textarea
+                  value={form.strategy.lifestyleTopics}
+                  onChange={(e) => setStrategy("lifestyleTopics", e.target.value)}
+                  placeholder={"Morning coffee at Bondi\nPilates at 7am\nFavourite restaurants in Sydney\nWeekend with grandkids\nBooks currently reading\nSummer holidays on the coast"}
+                  rows={4}
+                  className={`${inputCls} resize-none`}
+                />
+              </Field>
+              <Field label="Behind-the-scenes topics — one per line">
+                <textarea
+                  value={form.strategy.btsTopics}
+                  onChange={(e) => setStrategy("btsTopics", e.target.value)}
+                  placeholder={"Writing the Daily Mail column\nPrepping for a Zurich keynote\nInterviewing money masters for the podcast\nFilming at the Sydney studio\nA day of client meetings"}
+                  rows={4}
+                  className={`${inputCls} resize-none`}
+                />
+              </Field>
             </div>
           )}
         </div>

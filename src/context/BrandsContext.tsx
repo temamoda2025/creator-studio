@@ -28,7 +28,8 @@ function rowToBrand(row: Record<string, any>): Brand {
     row.hero_description || row.external_problem || row.internal_problem ||
     row.philosophical_problem || row.guide_role || row.three_step_plan ||
     row.direct_cta || row.transitional_cta || row.stakes || row.transformation ||
-    row.content_pillars || row.storytelling_angle || row.posting_cadence;
+    row.content_pillars || row.storytelling_angle || row.posting_cadence ||
+    row.personal_quotes || row.lifestyle_topics || row.bts_topics;
 
   return {
     id: row.id,
@@ -55,6 +56,9 @@ function rowToBrand(row: Record<string, any>): Brand {
       contentPillars:       row.content_pillars       ?? undefined,
       storytellingAngle:    row.storytelling_angle    ?? undefined,
       postingCadence:       row.posting_cadence       ?? undefined,
+      personalQuotes:       row.personal_quotes       ?? undefined,
+      lifestyleTopics:      row.lifestyle_topics      ?? undefined,
+      btsTopics:            row.bts_topics            ?? undefined,
     } : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
@@ -117,6 +121,9 @@ export function BrandsProvider({ children }: { children: ReactNode }) {
           content_pillars:       s?.contentPillars       ?? null,
           storytelling_angle:    s?.storytellingAngle    ?? null,
           posting_cadence:       s?.postingCadence       ?? null,
+          personal_quotes:       s?.personalQuotes       ?? null,
+          lifestyle_topics:      s?.lifestyleTopics      ?? null,
+          bts_topics:            s?.btsTopics            ?? null,
         })
         .select()
         .single();
@@ -157,6 +164,9 @@ export function BrandsProvider({ children }: { children: ReactNode }) {
         patch.content_pillars       = s?.contentPillars       ?? null;
         patch.storytelling_angle    = s?.storytellingAngle    ?? null;
         patch.posting_cadence       = s?.postingCadence       ?? null;
+        patch.personal_quotes       = s?.personalQuotes       ?? null;
+        patch.lifestyle_topics      = s?.lifestyleTopics      ?? null;
+        patch.bts_topics            = s?.btsTopics            ?? null;
       }
 
       const { data: row, error } = await supabase

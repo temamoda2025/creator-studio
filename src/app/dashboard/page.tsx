@@ -13,6 +13,7 @@ import ContentCalendar, { type CalendarIdea } from "@/components/ContentCalendar
 import ContentAnalytics from "@/components/ContentAnalytics";
 import SocialConnections from "@/components/SocialConnections";
 import { useBrands } from "@/context/BrandsContext";
+import JourneyPlanner from "@/components/JourneyPlanner";
 import type { Brand } from "@/types/brand";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -364,11 +365,12 @@ function StrategyField({
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "strategy" | "research" | "trending-audio" | "content-generator" | "reel-scripts" | "design-creator" | "history" | "calendar" | "analytics";
+type Tab = "overview" | "strategy" | "journey" | "research" | "trending-audio" | "content-generator" | "reel-scripts" | "design-creator" | "history" | "calendar" | "analytics";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview",          label: "Overview"           },
   { id: "strategy",          label: "Strategy"           },
+  { id: "journey",           label: "Journey"            },
   { id: "research",          label: "Content Research"   },
   { id: "trending-audio",    label: "Trending Audio"     },
   { id: "content-generator", label: "Content Generator"  },
@@ -1061,6 +1063,9 @@ export default function DashboardPage() {
               )}
             </div>
           )}
+
+          {/* ── Journey ── */}
+          {tab === "journey" && <JourneyPlanner />}
 
           {/* ── Content Research ── */}
           {tab === "research" && (

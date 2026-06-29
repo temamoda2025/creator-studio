@@ -26,6 +26,9 @@ export interface BrandStrategy {
   contentPillars?: string[];
   storytellingAngle?: string;
   postingCadence?: string;
+  personalQuotes?: string[];
+  lifestyleTopics?: string[];
+  btsTopics?: string[];
 }
 
 export interface Brand {
