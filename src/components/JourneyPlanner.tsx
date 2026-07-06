@@ -152,6 +152,15 @@ function IdeaCard({
         <span className="text-[10px] border border-black/12 text-black/45 px-2 py-0.5 rounded-full">
           {FORMAT_LABEL[idea.format] ?? idea.format}
         </span>
+        {idea.captionMode && (
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+            idea.captionMode === "Storytelling"
+              ? "bg-amber-100 text-amber-700"
+              : "bg-black/8 text-black/50"
+          }`}>
+            {idea.captionMode === "Storytelling" ? "💛 Story" : "📢 Mktg"}
+          </span>
+        )}
       </div>
 
       {/* Title */}

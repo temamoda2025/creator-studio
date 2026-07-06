@@ -29,6 +29,7 @@ export interface JourneyIdea {
   contentType: "Expertise" | "Lifestyle" | "Quote" | "BTS";
   week: number;
   hook: string;
+  captionMode: "Marketing" | "Storytelling";
 }
 
 export interface JourneyStage {
@@ -109,11 +110,14 @@ Return ONLY a raw JSON array — no markdown, no code fences, no preamble:
         "format": "Reel" | "Carousel" | "Static Post" | "Story",
         "contentType": "Expertise" | "Lifestyle" | "Quote" | "BTS",
         "week": 1,
-        "hook": "The exact opening line — scroll-stopping, in first or second person, ready to post as-is"
+        "hook": "The exact opening line — scroll-stopping, in first or second person, ready to post as-is",
+        "captionMode": "Marketing" | "Storytelling"
       }
     ]
   }
 ]
+
+captionMode rules: "Marketing" = persuasive, benefit-driven, structured, CTA-focused. "Storytelling" = narrative, first-person, scene-based, insight lands quietly, soft or no CTA. Lifestyle, Quote, and BTS ideas are almost always "Storytelling". Expertise ideas may be either depending on whether they teach (Marketing) or share a personal revelation (Storytelling).
 
 Return all 6 stages. Each stage has 4–5 ideas. No markdown. No code fences. Just the raw JSON array.`;
 }

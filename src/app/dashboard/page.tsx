@@ -91,6 +91,7 @@ interface Idea {
   format: string;
   hook: string;
   effort: "Low" | "Medium" | "High";
+  captionMode?: "Marketing" | "Storytelling";
 }
 
 const NICHE_IDEAS: Record<string, Idea[]> = {
@@ -292,11 +293,20 @@ function IdeaGrid({
   if (ideas.length === 0) return null;
   return (
     <div className="grid sm:grid-cols-2 gap-4">
-      {ideas.map(({ pillar, format, hook, effort }) => (
+      {ideas.map(({ pillar, format, hook, effort, captionMode }) => (
         <div key={hook} className="border border-black/10 p-5 hover:border-black/30 transition-colors">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs text-black/40">{pillar}</span>
             <div className="flex items-center gap-2">
+              {captionMode && (
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                  captionMode === "Storytelling"
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-black/8 text-black/50"
+                }`}>
+                  {captionMode === "Storytelling" ? "💛 Story" : "📢 Mktg"}
+                </span>
+              )}
               <span className="text-xs border border-black/15 px-2 py-0.5 rounded-full">{format}</span>
               <span
                 className={`text-xs px-2 py-0.5 rounded-full ${

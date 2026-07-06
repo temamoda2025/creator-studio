@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 
 const DURATIONS = ["15s", "30s", "60s", "90s"] as const;
 type Duration = (typeof DURATIONS)[number];
+type CaptionMode = "marketing" | "storytelling";
 
 interface ScriptHook {
   timeRange: string;
@@ -201,6 +202,7 @@ export default function ReelScriptGenerator() {
   const [selectedBrandId, setSelectedBrandId] = useState<string>("");
   const [topic, setTopic] = useState("");
   const [duration, setDuration] = useState<Duration>("30s");
+  const [captionMode, setCaptionMode] = useState<CaptionMode>("marketing");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ReelScript | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -227,6 +229,7 @@ export default function ReelScriptGenerator() {
         body: JSON.stringify({
           topic,
           duration,
+          captionMode,
           brandName: selectedBrand?.name ?? "",
           targetAudience: selectedBrand?.targetAudience ?? "",
           brandVoice: selectedBrand?.brandVoice ?? null,
@@ -346,12 +349,50 @@ export default function ReelScriptGenerator() {
               </div>
             </div>
 
+            {/* Caption Mode */}
+            <div>
+              <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
+                Caption Mode
+              </label>
+              <div className="flex gap-px border border-black/10 w-fit">
+                <button
+                  onClick={() => setCaptionMode("marketing")}
+                  className={`text-sm px-5 py-2.5 transition-colors ${
+                    captionMode === "marketing"
+                      ? "bg-black text-white"
+                      : "text-black/50 hover:text-black bg-white"
+                  }`}
+                >
+                  📢 Marketing
+                </button>
+                <button
+                  onClick={() => setCaptionMode("storytelling")}
+                  className={`text-sm px-5 py-2.5 transition-colors ${
+                    captionMode === "storytelling"
+                      ? "bg-black text-white"
+                      : "text-black/50 hover:text-black bg-white"
+                  }`}
+                >
+                  💛 Storytelling
+                </button>
+              </div>
+              <p className="text-xs text-black/30 mt-2">
+                {captionMode === "marketing"
+                  ? "Hook-driven, persuasive — strong CTA, problem → solution structure"
+                  : "Scene-based, first-person narrative — opens with a moment, insight lands quietly"}
+              </p>
+            </div>
+
             <button
               onClick={generate}
               disabled={!canSubmit}
               className="mt-2 w-full sm:w-auto bg-black text-white text-sm px-8 py-3 rounded-full hover:bg-black/80 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              {loading ? "Writing script…" : "Generate Script"}
+              {loading
+                ? "Writing script…"
+                : captionMode === "storytelling"
+                ? "Generate Story Script"
+                : "Generate Script"}
             </button>
           </div>
         </div>
@@ -371,7 +412,9 @@ export default function ReelScriptGenerator() {
               ))}
             </div>
             <p className="text-sm text-black/40">
-              Directing your {duration} Reel — writing scene by scene…
+              {captionMode === "storytelling"
+                ? `Writing your ${duration} story Reel — building scene by scene…`
+                : `Directing your ${duration} Reel — writing scene by scene…`}
             </p>
           </div>
           <ScriptSkeleton />

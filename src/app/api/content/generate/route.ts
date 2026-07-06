@@ -2,7 +2,78 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic();
 
-const SYSTEM_PROMPT = `You are an elite content strategist and copywriter — the intersection of the world's greatest marketing minds applied to social media content.
+const STORYTELLING_SYSTEM_PROMPT = `You are a brand storyteller and narrative copywriter — trained in the tradition of literary journalism, personal essay, and the kind of social media caption that earns trust not through persuasion but through recognition.
+
+## Your Philosophy
+
+Great storytelling captions do not begin with a pitch. They begin with a moment.
+
+Not "Discover why quality matters" — but "I opened my wardrobe this morning and reached for the same linen shirt I've worn a hundred times. It still felt like the first day I bought it."
+
+The reader doesn't need to be told what to feel. They need to be placed inside a moment specific enough that they feel it themselves.
+
+## Core Principles
+
+**Open with a scene** — a sensory moment, an observation, a fragment of ordinary life. Not a question, not a bold claim. Let the reader step into the world before they know what the post is about.
+
+**Write in first person** — "I" or "we". Not "you", not "have you ever?". The brand speaks from its own experience. The reader finds themselves reflected in it without being pointed at.
+
+**Sensory before abstract** — What was seen, heard, felt? Anchor every idea in the physical world before naming the emotion or conclusion.
+
+**Let the insight arrive quietly** — Don't announce the lesson. Don't write "and that's why..." or "the takeaway is...". Let the realisation emerge from the story itself. Trust the reader.
+
+**Vulnerability without performance** — Share the real thing, not the Instagram-ready version of it. Rough edges build trust. Polished vulnerability rings false.
+
+**CTA is optional and soft** — If present, it should feel like a natural close, not a gear shift. "If this resonates, save it." "Tell me yours below." Never commanding, never urgent. The caption can also end without any CTA at all.
+
+## Story Architecture
+
+When filling the analysis fields, think in these narrative layers:
+- **adorar.attention** = Opening Scene — the sensory moment that starts the story
+- **adorar.desire** = Emotional Thread — the feeling running underneath, like a current
+- **adorar.outcome** = Story Tension — the small conflict, contradiction, or turning point that gives the story motion
+- **adorar.reasonToBelieve** = Universal Truth — why this private moment resonates across many lives
+- **adorar.authenticity** = Vulnerable Detail — the specific, imperfect, human thing that makes it undeniably real
+- **adorar.realYou** = Quiet Insight — what the story arrives at, without declaring it
+
+## Strategy Fields to Draw From
+
+Prioritise:
+- **Personal Quotes** — use verbatim or as the narrative spine
+- **Lifestyle Topics** — these are the scenes. Use specific ones from the list.
+- **BTS Topics** — behind-the-scenes moments that reveal the human behind the brand
+- **Philosophical Problem** — the deeper "why does this matter" the brand holds
+- **Transformation** — where the audience arrives, felt not stated
+
+De-emphasise: external problems, explicit CTAs, the 3-step plan, stakes language. These belong to marketing mode.
+
+## Output Format
+
+Return structured JSON only. No markdown fences. No explanation. No preamble.
+
+{
+  "adorar": {
+    "attention": "Opening Scene — the sensory moment that begins the story",
+    "desire": "Emotional Thread — the feeling running underneath this story",
+    "outcome": "Story Tension — the small conflict or turning point that gives the story motion",
+    "reasonToBelieve": "Universal Truth — why this private moment resonates across many lives",
+    "authenticity": "Vulnerable Detail — the specific human thing that makes this undeniably real",
+    "realYou": "Quiet Insight — what the story arrives at, without announcing it"
+  },
+  "coreMessage": "The single truth at the centre of this story",
+  "emotionalMessage": "How the reader should feel after reading — not what to think, but how to feel",
+  "visualDirection": "What to photograph: real, unpolished, documentary. Specific scenes over styled shots.",
+  "caption": "The full narrative caption — opens with a scene, builds quietly, lands the insight, closes with an optional soft CTA or no CTA at all",
+  "psychologicalExplanation": "Why this story works — what makes a reader feel seen rather than sold to, and which narrative techniques are at play",
+  "cta": "If used: soft, curious, an invitation. Can be an empty string if no CTA fits the story.",
+  "slides": [
+    { "slideNumber": 1, "heading": "2–5 word slide title", "body": "slide copy — 1–3 sentences, narrative voice" }
+  ]
+}
+
+Note: "slides" is ONLY included when the format is Carousel. Omit the field entirely for all other formats.`;
+
+const MARKETING_SYSTEM_PROMPT = `You are an elite content strategist and copywriter — the intersection of the world's greatest marketing minds applied to social media content.
 
 ## Your Intellectual Lineage
 
@@ -98,26 +169,44 @@ interface BrandStrategyPayload {
   contentPillars?: string[];
   storytellingAngle?: string;
   postingCadence?: string;
+  personalQuotes?: string[];
+  lifestyleTopics?: string[];
+  btsTopics?: string[];
 }
 
-function buildStrategyBlock(s: BrandStrategyPayload | null | undefined): string {
+function buildStrategyBlock(s: BrandStrategyPayload | null | undefined, captionMode: "marketing" | "storytelling" = "marketing"): string {
   if (!s) return "";
   const lines: string[] = [];
-  if (s.heroDescription)      lines.push(`**Hero:** ${s.heroDescription}`);
-  if (s.externalProblem)      lines.push(`**External Problem:** ${s.externalProblem}`);
-  if (s.internalProblem)      lines.push(`**Internal Problem:** ${s.internalProblem}`);
-  if (s.philosophicalProblem) lines.push(`**Philosophical Problem:** ${s.philosophicalProblem}`);
-  if (s.guideRole)            lines.push(`**Guide Role:** ${s.guideRole}`);
-  if (s.threeStepPlan?.some(Boolean))
-    lines.push(`**The 3-Step Plan:** 1. ${s.threeStepPlan[0]} → 2. ${s.threeStepPlan[1]} → 3. ${s.threeStepPlan[2]}`);
-  if (s.directCta)            lines.push(`**Direct CTA:** "${s.directCta}"`);
-  if (s.transitionalCta)      lines.push(`**Transitional CTA:** "${s.transitionalCta}"`);
-  if (s.stakes)               lines.push(`**Stakes (failure):** ${s.stakes}`);
-  if (s.transformation)       lines.push(`**Transformation (success):** ${s.transformation}`);
-  if (s.contentPillars?.length) lines.push(`**Content Pillars:** ${s.contentPillars.join(", ")}`);
-  if (s.storytellingAngle)    lines.push(`**Storytelling Angle:** ${s.storytellingAngle}`);
+
+  if (captionMode === "storytelling") {
+    if (s.philosophicalProblem) lines.push(`**Philosophical Problem:** ${s.philosophicalProblem}`);
+    if (s.transformation)       lines.push(`**Transformation:** ${s.transformation}`);
+    if (s.personalQuotes?.length)
+      lines.push(`**Personal Quotes (use verbatim or as narrative spine):**\n${s.personalQuotes.map(q => `  – "${q}"`).join("\n")}`);
+    if (s.lifestyleTopics?.length)
+      lines.push(`**Lifestyle Topics (use as scene sources):** ${s.lifestyleTopics.join(", ")}`);
+    if (s.btsTopics?.length)
+      lines.push(`**BTS Topics (raw, real moments):** ${s.btsTopics.join(", ")}`);
+    if (s.heroDescription)      lines.push(`**Hero (the person behind the brand):** ${s.heroDescription}`);
+    if (s.contentPillars?.length) lines.push(`**Content Pillars:** ${s.contentPillars.join(", ")}`);
+  } else {
+    if (s.heroDescription)      lines.push(`**Hero:** ${s.heroDescription}`);
+    if (s.externalProblem)      lines.push(`**External Problem:** ${s.externalProblem}`);
+    if (s.internalProblem)      lines.push(`**Internal Problem:** ${s.internalProblem}`);
+    if (s.philosophicalProblem) lines.push(`**Philosophical Problem:** ${s.philosophicalProblem}`);
+    if (s.guideRole)            lines.push(`**Guide Role:** ${s.guideRole}`);
+    if (s.threeStepPlan?.some(Boolean))
+      lines.push(`**The 3-Step Plan:** 1. ${s.threeStepPlan![0]} → 2. ${s.threeStepPlan![1]} → 3. ${s.threeStepPlan![2]}`);
+    if (s.directCta)            lines.push(`**Direct CTA:** "${s.directCta}"`);
+    if (s.transitionalCta)      lines.push(`**Transitional CTA:** "${s.transitionalCta}"`);
+    if (s.stakes)               lines.push(`**Stakes (failure):** ${s.stakes}`);
+    if (s.transformation)       lines.push(`**Transformation (success):** ${s.transformation}`);
+    if (s.contentPillars?.length) lines.push(`**Content Pillars:** ${s.contentPillars.join(", ")}`);
+    if (s.storytellingAngle)    lines.push(`**Storytelling Angle:** ${s.storytellingAngle}`);
+  }
+
   if (lines.length === 0) return "";
-  return `\n## StoryBrand Strategy\n${lines.join("\n")}\n`;
+  return `\n## Brand Strategy\n${lines.join("\n")}\n`;
 }
 
 export async function POST(request: Request) {
@@ -128,6 +217,7 @@ export async function POST(request: Request) {
       contentIdea,
       format,
       tone,
+      captionMode = "marketing",
       brandVoice,
       brandPositioning,
       brandStrategy,
@@ -177,11 +267,41 @@ export async function POST(request: Request) {
       ? `**Brand Positioning:** ${brandPositioning}\n`
       : "";
 
-    const strategySection = buildStrategyBlock(brandStrategy as BrandStrategyPayload | null);
+    const isStorytelling = captionMode === "storytelling";
+    const strategySection = buildStrategyBlock(brandStrategy as BrandStrategyPayload | null, captionMode);
 
     const hasImage = !!imageBase64;
 
-    const userMessage = `Generate ADORAR™ content for this brand and idea.${hasImage ? " You have been provided with the actual image for this post — study it carefully. The caption must feel like it was written specifically for this exact visual. Reference what you see: the mood, the composition, the colours, the story the image tells. The visual and caption must feel inseparable." : ""}
+    const userMessage = isStorytelling
+      ? `Write a Storytelling caption for this brand and idea.${hasImage ? " You have been provided with the actual image for this post — let it inform the scene you open with. What moment does this image contain? Write from inside that moment." : ""}
+
+**Brand:** ${brandName}
+${positioningLine}**Target Audience:** ${targetAudience || "Not specified — infer from brand context"}
+**Content Idea / Topic:** ${contentIdea}
+**Format:** ${format} — ${selectedFormatGuidance}
+${voiceSection}${strategySection}
+## Your Task
+
+1. Build the Story Architecture — identify the opening scene, emotional thread, tension, universal truth, vulnerable detail, and quiet insight that this story holds.
+
+2. Distil the core message (the single truth at the centre) and emotional message (how the reader should feel, not think).
+
+3. Provide visual art direction — real, unpolished, documentary-style. Specific over styled.
+
+4. Write the narrative caption — opens with a scene, builds quietly, lands the insight. CTA is optional and soft, or absent.${hasImage ? " Let the image speak first. The caption continues what the image started." : ""} The caption must sound like a real person writing from lived experience, not a content generator.
+
+5. Explain why this story works psychologically — what makes a reader feel seen rather than sold to.
+
+6. Write the CTA only if it fits naturally. If not, use an empty string.
+${format === "Carousel" ? `
+7. Since this is a Carousel, generate the "slides" array with exactly 5 entries. Each slide continues the narrative:
+   - Slide 1 — Opening: The scene that draws the reader in. No hook, no claim — a moment.
+   - Slides 2–4 — Journey: Each slide deepens the story — a detail, a shift, a realisation. Quiet, specific, first-person.
+   - Slide 5 — Arrival: Where the story lands. An insight, an invitation, or simply where the moment resolves.
+   "heading" = 2–5 word slide title (understated, not clickbait). "body" = slide copy (1–3 sentences, narrative voice).
+` : ""}
+Return ONLY the raw JSON object. No markdown. No code fences. No preamble.`
+      : `Generate ADORAR™ content for this brand and idea.${hasImage ? " You have been provided with the actual image for this post — study it carefully. The caption must feel like it was written specifically for this exact visual. Reference what you see: the mood, the composition, the colours, the story the image tells. The visual and caption must feel inseparable." : ""}
 
 **Brand:** ${brandName}
 ${positioningLine}**Target Audience:** ${targetAudience || "Not specified — infer from brand context"}
@@ -214,7 +334,7 @@ Write the caption for ${brandName}. The brand voice should feel authentic to who
 ${strategySection ? `
 ## StoryBrand Directive
 
-If StoryBrand Strategy is defined above, apply it as follows:
+Apply the Brand Strategy above as follows:
 - The customer is the hero — position ${brandName} as guide, mentor, or key, never the hero
 - Let the hero's internal problem inform the emotional hook
 - Reference the transformation or stakes where authentic — not forced
@@ -243,6 +363,8 @@ Return ONLY the raw JSON object. No markdown. No code fences. No preamble.`;
 
     messageContent.push({ type: "text", text: userMessage });
 
+    const systemPrompt = isStorytelling ? STORYTELLING_SYSTEM_PROMPT : MARKETING_SYSTEM_PROMPT;
+
     const response = await client.messages.create({
       model: "claude-opus-4-8",
       max_tokens: 6000,
@@ -250,7 +372,7 @@ Return ONLY the raw JSON object. No markdown. No code fences. No preamble.`;
       system: [
         {
           type: "text",
-          text: SYSTEM_PROMPT,
+          text: systemPrompt,
           cache_control: { type: "ephemeral" },
         },
       ],

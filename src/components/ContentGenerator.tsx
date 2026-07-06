@@ -60,6 +60,20 @@ const ADORAR_LABELS: {
   { key: "realYou", letter: "R", label: "Real You" },
 ];
 
+const STORY_LABELS: {
+  key: keyof ContentResult["adorar"];
+  label: string;
+}[] = [
+  { key: "attention",       label: "Opening Scene" },
+  { key: "desire",          label: "Emotional Thread" },
+  { key: "outcome",         label: "Story Tension" },
+  { key: "reasonToBelieve", label: "Universal Truth" },
+  { key: "authenticity",    label: "Vulnerable Detail" },
+  { key: "realYou",         label: "Quiet Insight" },
+];
+
+type CaptionMode = "marketing" | "storytelling";
+
 const FALLBACK_FONT =
   'system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
 
@@ -197,6 +211,7 @@ export default function ContentGenerator({
   const [topic, setTopic] = useState("");
   const [format, setFormat] = useState<Format>("Single Post");
   const [tone, setTone] = useState<Tone>("Inspirational");
+  const [captionMode, setCaptionMode] = useState<CaptionMode>("marketing");
 
   // Generation
   const [loading, setLoading] = useState(false);
@@ -314,6 +329,7 @@ export default function ContentGenerator({
           contentIdea: topic,
           format,
           tone,
+          captionMode,
           brandVoice: activeBrand?.brandVoice ?? null,
           brandPositioning: activeBrand?.positioning ?? null,
           brandStrategy: activeBrand?.strategy ?? null,
@@ -581,6 +597,39 @@ export default function ContentGenerator({
               ))}
             </div>
           </div>
+
+          <div>
+            <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
+              Caption Mode
+            </label>
+            <div className="flex gap-px border border-black/10 w-fit">
+              <button
+                onClick={() => setCaptionMode("marketing")}
+                className={`text-sm px-5 py-2.5 transition-colors ${
+                  captionMode === "marketing"
+                    ? "bg-black text-white"
+                    : "text-black/50 hover:text-black bg-white"
+                }`}
+              >
+                📢 Marketing
+              </button>
+              <button
+                onClick={() => setCaptionMode("storytelling")}
+                className={`text-sm px-5 py-2.5 transition-colors ${
+                  captionMode === "storytelling"
+                    ? "bg-black text-white"
+                    : "text-black/50 hover:text-black bg-white"
+                }`}
+              >
+                💛 Storytelling
+              </button>
+            </div>
+            <p className="text-xs text-black/30 mt-2">
+              {captionMode === "marketing"
+                ? "Persuasive, structured, benefit-driven — uses ADORAR™ framework with CTA"
+                : "Narrative, first-person, scene-based — insight lands quietly, CTA is soft or absent"}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -591,7 +640,11 @@ export default function ContentGenerator({
           disabled={!topic.trim() || loading}
           className="bg-black text-white text-sm px-10 py-4 hover:bg-black/80 transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-medium tracking-wide"
         >
-          {loading ? "Generating..." : "Generate with ADORAR™"}
+          {loading
+            ? "Generating..."
+            : captionMode === "marketing"
+            ? "Generate with ADORAR™"
+            : "Generate Story Caption"}
         </button>
         {!imageDataUrl && (
           <p className="text-xs text-black/30">
@@ -613,7 +666,11 @@ export default function ContentGenerator({
             ))}
           </div>
           <p className="text-sm text-black/40">
-            {imageDataUrl
+            {captionMode === "storytelling"
+              ? imageDataUrl
+                ? "Reading your image and writing the story..."
+                : "Crafting your story caption..."
+              : imageDataUrl
               ? "Analysing your visual and building ADORAR™ strategy..."
               : "Running ADORAR™ analysis..."}
           </p>
@@ -696,9 +753,18 @@ export default function ContentGenerator({
             {/* Caption */}
             <div className="bg-white border border-black/10 p-6">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-black/30">
-                  Caption — {format}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs uppercase tracking-[0.2em] text-black/30">
+                    Caption — {format}
+                  </p>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                    captionMode === "storytelling"
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-black/8 text-black/50"
+                  }`}>
+                    {captionMode === "storytelling" ? "💛 Storytelling" : "📢 Marketing"}
+                  </span>
+                </div>
                 <CopyButton text={result.caption} label="Copy Caption" />
               </div>
               <p className="text-sm text-black/80 leading-relaxed whitespace-pre-line">
@@ -757,28 +823,43 @@ export default function ContentGenerator({
             </div>
           )}
 
-          {/* ADORAR Analysis */}
+          {/* ADORAR Analysis / Story Architecture */}
           <div className="bg-white border border-black/10 p-8">
             <p className="text-xs uppercase tracking-[0.2em] text-black/30 mb-6">
-              ADORAR™ Analysis
+              {captionMode === "storytelling" ? "Story Architecture" : "ADORAR™ Analysis"}
             </p>
-            <div className="grid sm:grid-cols-2 gap-6">
-              {ADORAR_LABELS.map(({ key, letter, label }) => (
-                <div key={key} className="border-l-2 border-black/10 pl-4">
-                  <div className="flex items-baseline gap-2 mb-2">
-                    <span className="text-lg font-semibold leading-none">
-                      {letter}
-                    </span>
-                    <span className="text-xs text-black/40 uppercase tracking-wider">
+            {captionMode === "storytelling" ? (
+              <div className="grid sm:grid-cols-2 gap-6">
+                {STORY_LABELS.map(({ key, label }) => (
+                  <div key={key} className="border-l-2 border-amber-200 pl-4">
+                    <p className="text-xs text-black/40 uppercase tracking-wider mb-2">
                       {label}
-                    </span>
+                    </p>
+                    <p className="text-sm text-black/70 leading-relaxed">
+                      {result.adorar[key]}
+                    </p>
                   </div>
-                  <p className="text-sm text-black/70 leading-relaxed">
-                    {result.adorar[key]}
-                  </p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-6">
+                {ADORAR_LABELS.map(({ key, letter, label }) => (
+                  <div key={key} className="border-l-2 border-black/10 pl-4">
+                    <div className="flex items-baseline gap-2 mb-2">
+                      <span className="text-lg font-semibold leading-none">
+                        {letter}
+                      </span>
+                      <span className="text-xs text-black/40 uppercase tracking-wider">
+                        {label}
+                      </span>
+                    </div>
+                    <p className="text-sm text-black/70 leading-relaxed">
+                      {result.adorar[key]}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Core + Emotional + Visual Direction */}

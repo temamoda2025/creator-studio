@@ -2,7 +2,58 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic();
 
-const SYSTEM_PROMPT = `You are a world-class short-form video director and scriptwriter — the intersection of a Hollywood script supervisor, a direct-response copywriter, and a platform-native content strategist.
+const STORYTELLING_REEL_PROMPT = `You are a documentary filmmaker and narrative scriptwriter for short-form video — trained in the tradition of intimate, observational cinema and first-person storytelling.
+
+## Your Philosophy
+
+A storytelling Reel doesn't open with a hook. It opens with a moment.
+
+Not "3 things nobody tells you about..." — but a shot of hands wrapping linen on a cutting table, close. No words yet. Just the texture.
+
+The viewer stays not because they're promised an answer, but because they feel they've stepped into something real.
+
+## Script Structure
+
+**Hook (0:00 – 0:03)** — A visual scene. Something is happening. No verbal hook, no question, no claim. The camera observes. If there's voiceover, it begins mid-thought, like catching someone already in a sentence.
+
+**Scenes** — Each scene deepens the moment. First-person voiceover ("I noticed", "We decided", "I kept thinking about"). Sensory details before conclusions. Let tension exist without resolving it immediately.
+
+**CTA (optional)** — Soft, curious, an invitation. "If this is something you think about, tell me in the comments." Or no CTA at all — the story can simply end. A closing image is sometimes more powerful than a call to action.
+
+**Caption** — Narrative. Opens with a scene fragment, builds quietly, lands the insight. First-person throughout.
+
+## Output Format
+
+Return structured JSON only. No markdown fences. No explanation. No preamble. Same structure:
+
+{
+  "hook": {
+    "timeRange": "0:00 – 0:03",
+    "visual": "A specific scene — what the camera sees, not what someone says. Observational, real, textured.",
+    "voiceover": "If any — a fragment already mid-thought. Or empty string for silence.",
+    "onScreenText": "Optional text overlay, understated. Or empty string."
+  },
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "timeRange": "0:03 – 0:XX",
+      "heading": "Short scene label — what narrative job this scene does (e.g. 'The Moment', 'The Shift', 'What I Realised')",
+      "visual": "Specific observational direction — what the camera sees, mood, texture, real not staged",
+      "voiceover": "First-person, present or past tense. Sensory before abstract. Short sentences.",
+      "onScreenText": "Text overlay if needed, understated. Or empty string."
+    }
+  ],
+  "cta": {
+    "timeRange": "0:XX – end",
+    "visual": "A closing image — something that lingers. Not a product shot.",
+    "voiceover": "If present: soft, curious, an invitation. Or an empty string.",
+    "onScreenText": "Optional. Or empty string."
+  },
+  "caption": "Narrative caption — opens with a scene, builds quietly, lands the insight. First-person throughout. CTA is optional and soft, or absent.",
+  "productionNotes": "Practical notes for the creator — natural light over artificial, handheld over tripod, real locations over styled sets. What to film, what to avoid, what makes this feel true."
+}`;
+
+const MARKETING_REEL_PROMPT = `You are a world-class short-form video director and scriptwriter — the intersection of a Hollywood script supervisor, a direct-response copywriter, and a platform-native content strategist.
 
 ## Your Expertise
 
@@ -97,31 +148,46 @@ interface BrandStrategyPayload {
   contentPillars?: string[];
   storytellingAngle?: string;
   postingCadence?: string;
+  personalQuotes?: string[];
+  lifestyleTopics?: string[];
+  btsTopics?: string[];
 }
 
-function buildStrategyBlock(s: BrandStrategyPayload | null | undefined): string {
+function buildStrategyBlock(s: BrandStrategyPayload | null | undefined, captionMode: "marketing" | "storytelling" = "marketing"): string {
   if (!s) return "";
   const lines: string[] = [];
-  if (s.heroDescription)      lines.push(`**Hero:** ${s.heroDescription}`);
-  if (s.externalProblem)      lines.push(`**External Problem:** ${s.externalProblem}`);
-  if (s.internalProblem)      lines.push(`**Internal Problem:** ${s.internalProblem}`);
-  if (s.philosophicalProblem) lines.push(`**Philosophical Problem:** ${s.philosophicalProblem}`);
-  if (s.guideRole)            lines.push(`**Guide Role:** ${s.guideRole}`);
-  if (s.threeStepPlan?.some(Boolean))
-    lines.push(`**The 3-Step Plan:** 1. ${s.threeStepPlan[0]} → 2. ${s.threeStepPlan[1]} → 3. ${s.threeStepPlan[2]}`);
-  if (s.directCta)            lines.push(`**Direct CTA:** "${s.directCta}"`);
-  if (s.transitionalCta)      lines.push(`**Transitional CTA:** "${s.transitionalCta}"`);
-  if (s.stakes)               lines.push(`**Stakes (failure):** ${s.stakes}`);
-  if (s.transformation)       lines.push(`**Transformation (success):** ${s.transformation}`);
-  if (s.contentPillars?.length) lines.push(`**Content Pillars:** ${s.contentPillars.join(", ")}`);
-  if (s.storytellingAngle)    lines.push(`**Storytelling Angle:** ${s.storytellingAngle}`);
+  if (captionMode === "storytelling") {
+    if (s.philosophicalProblem) lines.push(`**Philosophical Problem:** ${s.philosophicalProblem}`);
+    if (s.transformation)       lines.push(`**Transformation:** ${s.transformation}`);
+    if (s.personalQuotes?.length)
+      lines.push(`**Personal Quotes (use verbatim or as narrative spine):**\n${s.personalQuotes.map(q => `  – "${q}"`).join("\n")}`);
+    if (s.lifestyleTopics?.length)
+      lines.push(`**Lifestyle Topics (use as scene sources):** ${s.lifestyleTopics.join(", ")}`);
+    if (s.btsTopics?.length)
+      lines.push(`**BTS Topics (raw, real moments):** ${s.btsTopics.join(", ")}`);
+    if (s.heroDescription)      lines.push(`**Brand Voice / Hero:** ${s.heroDescription}`);
+  } else {
+    if (s.heroDescription)      lines.push(`**Hero:** ${s.heroDescription}`);
+    if (s.externalProblem)      lines.push(`**External Problem:** ${s.externalProblem}`);
+    if (s.internalProblem)      lines.push(`**Internal Problem:** ${s.internalProblem}`);
+    if (s.philosophicalProblem) lines.push(`**Philosophical Problem:** ${s.philosophicalProblem}`);
+    if (s.guideRole)            lines.push(`**Guide Role:** ${s.guideRole}`);
+    if (s.threeStepPlan?.some(Boolean))
+      lines.push(`**The 3-Step Plan:** 1. ${s.threeStepPlan![0]} → 2. ${s.threeStepPlan![1]} → 3. ${s.threeStepPlan![2]}`);
+    if (s.directCta)            lines.push(`**Direct CTA:** "${s.directCta}"`);
+    if (s.transitionalCta)      lines.push(`**Transitional CTA:** "${s.transitionalCta}"`);
+    if (s.stakes)               lines.push(`**Stakes (failure):** ${s.stakes}`);
+    if (s.transformation)       lines.push(`**Transformation (success):** ${s.transformation}`);
+    if (s.contentPillars?.length) lines.push(`**Content Pillars:** ${s.contentPillars.join(", ")}`);
+    if (s.storytellingAngle)    lines.push(`**Storytelling Angle:** ${s.storytellingAngle}`);
+  }
   if (lines.length === 0) return "";
-  return `\n## StoryBrand Strategy\n${lines.join("\n")}\n`;
+  return `\n## Brand Strategy\n${lines.join("\n")}\n`;
 }
 
 export async function POST(request: Request) {
   try {
-    const { topic, brandName, targetAudience, duration, brandVoice, brandPositioning, brandStrategy } =
+    const { topic, brandName, targetAudience, duration, captionMode = "marketing", brandVoice, brandPositioning, brandStrategy } =
       await request.json();
 
     if (!topic || !brandName || !duration) {
@@ -144,13 +210,14 @@ export async function POST(request: Request) {
       ? `**Brand Positioning:** ${brandPositioning}\n`
       : "";
 
-    const strategySection = buildStrategyBlock(brandStrategy as BrandStrategyPayload | null);
+    const isStorytelling = captionMode === "storytelling";
+    const strategySection = buildStrategyBlock(brandStrategy as BrandStrategyPayload | null, captionMode);
 
-    const storyBrandDirective = strategySection
+    const storyBrandDirective = !isStorytelling && strategySection
       ? `
 ## StoryBrand Narrative Directive
 
-If StoryBrand Strategy is defined above, structure the script as a StoryBrand story:
+Apply the Brand Strategy above as follows:
 - **Hook** → speak directly to the hero's internal or external problem — the felt emotion, the frustration, the before-state
 - **Main scenes** → position ${brandName} as the guide: show empathy, authority, and the 3-step plan if available
 - **Near the CTA** → briefly paint the transformation (who they become) or acknowledge the stakes (what happens if they don't act)
@@ -159,7 +226,38 @@ If StoryBrand Strategy is defined above, structure the script as a StoryBrand st
 `
       : "";
 
-    const userMessage = `Write a ${duration} Instagram Reel script for this brand and topic.
+    const userMessage = isStorytelling
+      ? `Write a ${duration} Storytelling Reel script for this brand and topic.
+
+**Brand:** ${brandName}
+${positioningLine}**Target Audience:** ${targetAudience || "Infer from brand context"}
+**Topic:** ${topic}
+${voiceSection}${strategySection}
+## Duration & Structure
+
+${durationGuide.replace(
+  /hook \(0:00–0:03\)/gi,
+  "opening scene (0:00–0:03)"
+)}
+
+## Your Task
+
+1. Write a complete, scene-by-scene Reel script in the storytelling mode — a creator can pick this up and film it today.
+
+2. Open with a visual scene, not a verbal hook. Something is happening in the frame. The viewer steps into a moment.
+
+3. Direct the visuals for documentary authenticity — real, unpolished, observational. Handheld over tripod, natural light over studio, real locations over styled sets.
+
+4. Write the voiceover as first-person narrative — like catching someone mid-thought. Sensory before abstract. Short sentences that feel like natural speech.
+
+5. Match the brand voice. The script should feel like a real person sharing something that actually happened to them.
+
+6. Write a narrative caption that complements the Reel — opens with a scene, builds quietly, ends with a soft CTA or none at all.
+
+7. Add production notes focused on what makes this feel true, not produced.
+
+Return ONLY the raw JSON object. No markdown. No code fences. No preamble.`
+      : `Write a ${duration} Instagram Reel script for this brand and topic.
 
 **Brand:** ${brandName}
 ${positioningLine}**Target Audience:** ${targetAudience || "Infer from brand context"}
@@ -187,6 +285,8 @@ ${durationGuide}
 
 Return ONLY the raw JSON object. No markdown. No code fences. No preamble.`;
 
+    const systemPrompt = isStorytelling ? STORYTELLING_REEL_PROMPT : MARKETING_REEL_PROMPT;
+
     const response = await client.messages.create({
       model: "claude-opus-4-8",
       max_tokens: 4096,
@@ -194,7 +294,7 @@ Return ONLY the raw JSON object. No markdown. No code fences. No preamble.`;
       system: [
         {
           type: "text",
-          text: SYSTEM_PROMPT,
+          text: systemPrompt,
           cache_control: { type: "ephemeral" },
         },
       ],

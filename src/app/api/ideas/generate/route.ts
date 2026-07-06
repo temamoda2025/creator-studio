@@ -62,7 +62,8 @@ Return ONLY a raw JSON array — no markdown, no code fences, no preamble. Each 
     "pillar": "Content pillar name (2–4 words, e.g. Divorce & Money, Inheritance Talk, Prenup Reality)",
     "format": "Carousel | Reel | Static Post | Story",
     "hook": "The exact hook line — brave, specific, scroll-stopping. In first or second person. Ready to post as-is.",
-    "effort": "Low | Medium | High"
+    "effort": "Low | Medium | High",
+    "captionMode": "Marketing | Storytelling"
   }
 ]
 
@@ -72,7 +73,8 @@ Rules:
 - Mix formats: include at least 1 Carousel, 1 Reel, 1 Static Post
 - Mix effort: include at least 1 Low, 1 Medium, 1 High
 - Each idea covers a different pillar from her list above
-- Hooks are brave enough to make someone stop mid-scroll`;
+- Hooks are brave enough to make someone stop mid-scroll
+- captionMode: "Marketing" for persuasive, benefit-driven, CTA-focused ideas; "Storytelling" for narrative, first-person, scene-based ideas`;
 
 const ASTRA_PROMPT = `Generate 5 high-quality, specific social media content ideas for Astra Chauffeur — a premium chauffeur and wedding transport brand that turns every journey into a moment worth remembering.
 
@@ -91,7 +93,8 @@ Return ONLY a raw JSON array — no markdown, no code fences, no preamble. Each 
     "pillar": "Content pillar name (2–4 words, e.g. Wedding Arrival, Airport Transfer, The Astra Detail)",
     "format": "Carousel | Reel | Static Post | Story",
     "hook": "The exact hook line — evocative, specific, scene-setting. In first or second person. Ready to post as-is.",
-    "effort": "Low | Medium | High"
+    "effort": "Low | Medium | High",
+    "captionMode": "Marketing | Storytelling"
   }
 ]
 
@@ -101,7 +104,8 @@ Rules:
 - Mix formats: include at least 1 Carousel, 1 Reel, 1 Static Post
 - Mix effort: include at least 1 Low, 1 Medium, 1 High
 - Each idea covers a different pillar
-- Hooks feel like the first line of a story the reader wants to finish`;
+- Hooks feel like the first line of a story the reader wants to finish
+- captionMode: "Marketing" for persuasive, benefit-driven, CTA-focused ideas; "Storytelling" for narrative, first-person, scene-based ideas`;
 
 const TEMA_MODA_PROMPT = `Generate 5 high-quality, specific social media content ideas for Tema Moda — a luxury fashion brand built on the belief that great style is an investment in who you are.
 
@@ -120,7 +124,8 @@ Return ONLY a raw JSON array — no markdown, no code fences, no preamble. Each 
     "pillar": "Content pillar name (2–4 words, e.g. Wardrobe Strategy, The Investment Piece, Style Philosophy)",
     "format": "Carousel | Reel | Static Post | Story",
     "hook": "The exact hook line — elegant, specific, speaks to a felt truth. In first or second person. Ready to post as-is.",
-    "effort": "Low | Medium | High"
+    "effort": "Low | Medium | High",
+    "captionMode": "Marketing | Storytelling"
   }
 ]
 
@@ -130,7 +135,8 @@ Rules:
 - Mix formats: include at least 1 Carousel, 1 Reel, 1 Static Post
 - Mix effort: include at least 1 Low, 1 Medium, 1 High
 - Each idea covers a different pillar
-- Hooks speak to the identity and values of the woman, not the product`;
+- Hooks speak to the identity and values of the woman, not the product
+- captionMode: "Marketing" for persuasive, benefit-driven, CTA-focused ideas; "Storytelling" for narrative, first-person, scene-based ideas`;
 
 const NATASHA_PROMPT = `Generate 5 high-quality, specific social media content ideas for Natasha Tszyu — a personal stylist and luxury fashion editor who helps women look and feel extraordinary in their everyday life.
 
@@ -149,7 +155,8 @@ Return ONLY a raw JSON array — no markdown, no code fences, no preamble. Each 
     "pillar": "Content pillar name (2–4 words, e.g. Wardrobe Transformation, Styling Session, Investment Edit)",
     "format": "Carousel | Reel | Static Post | Story",
     "hook": "The exact hook line — warm, specific, feels like it was written for one woman. In first or second person. Ready to post as-is.",
-    "effort": "Low | Medium | High"
+    "effort": "Low | Medium | High",
+    "captionMode": "Marketing | Storytelling"
   }
 ]
 
@@ -159,7 +166,8 @@ Rules:
 - Mix formats: include at least 1 Carousel, 1 Reel, 1 Static Post
 - Mix effort: include at least 1 Low, 1 Medium, 1 High
 - Each idea covers a different pillar
-- Hooks make the reader feel seen, not sold to`;
+- Hooks make the reader feel seen, not sold to
+- captionMode: "Marketing" for persuasive, benefit-driven, CTA-focused ideas; "Storytelling" for narrative, first-person, scene-based ideas`;
 
 interface BrandVoiceTrait { trait: string; opposite: string; intensity: number; }
 interface BrandVoicePayload {
@@ -267,7 +275,8 @@ Return ONLY a raw JSON array — no markdown, no code fences, no preamble. Each 
     "pillar": "Content pillar name (2–4 words, specific to ${brandName}'s world)",
     "format": "Carousel | Reel | Static Post | Story",
     "hook": "The exact hook line — specific, scroll-stopping, in first or second person, ready to post as-is",
-    "effort": "Low | Medium | High"
+    "effort": "Low | Medium | High",
+    "captionMode": "Marketing | Storytelling"
   }
 ]
 
@@ -276,7 +285,8 @@ Rules:
 - Every hook must feel like it belongs to ${brandName} specifically — never generic
 - Mix formats: include at least 1 Carousel, 1 Reel, 1 Static Post
 - Mix effort: include at least 1 Low, 1 Medium, 1 High
-- Cover different angles: education, social proof, behind the scenes, personal story, transformation`;
+- Cover different angles: education, social proof, behind the scenes, personal story, transformation
+- captionMode: "Marketing" for persuasive, benefit-driven, CTA-focused ideas; "Storytelling" for narrative, first-person, scene-based ideas. Mix both across the 5 ideas.`;
 }
 
 const TOPIC_PROMPT = (
@@ -327,7 +337,8 @@ Return ONLY a raw JSON array — no markdown, no code fences, no preamble. Each 
     "pillar": "Content pillar name (2–4 words, specific to this topic)",
     "format": "Carousel | Reel | Static Post | Story",
     "hook": "The exact hook line — specific to "${topic}", scroll-stopping, in first or second person, ready to post as-is",
-    "effort": "Low | Medium | High"
+    "effort": "Low | Medium | High",
+    "captionMode": "Marketing | Storytelling"
   }
 ]
 
@@ -336,7 +347,8 @@ Rules:
 - Every hook must directly reference or clearly relate to "${topic}" — no generic hooks
 - Mix formats: include at least 1 Carousel, 1 Reel, 1 Static Post
 - Mix effort: at least 1 Low, 1 Medium, 1 High
-- Cover different angles on the topic: education, myth-busting, personal story, how-to, social proof`;
+- Cover different angles on the topic: education, myth-busting, personal story, how-to, social proof
+- captionMode: "Marketing" for persuasive, benefit-driven, CTA-focused ideas; "Storytelling" for narrative, first-person, scene-based ideas. Mix both across the 5 ideas.`;
 };
 
 export async function POST(request: Request) {
