@@ -38,6 +38,9 @@ function rowToBrand(row: Record<string, any>): Brand {
     handle: row.handle ?? undefined,
     platforms: row.platforms ?? [],
     targetAudience: row.target_audience ?? "",
+    audienceSegments: Array.isArray(row.audience_segments) && row.audience_segments.length > 0
+      ? row.audience_segments
+      : undefined,
     positioning: row.positioning ?? undefined,
     mission: row.mission ?? undefined,
     vision: row.vision ?? undefined,
@@ -104,6 +107,7 @@ export function BrandsProvider({ children }: { children: ReactNode }) {
           niche: data.niche,
           platforms: data.platforms,
           target_audience: data.targetAudience,
+          audience_segments: data.audienceSegments ?? [],
           positioning: data.positioning ?? null,
           mission: data.mission ?? null,
           vision: data.vision ?? null,
@@ -145,6 +149,7 @@ export function BrandsProvider({ children }: { children: ReactNode }) {
       if (data.niche !== undefined) patch.niche = data.niche;
       if (data.platforms !== undefined) patch.platforms = data.platforms;
       if (data.targetAudience !== undefined) patch.target_audience = data.targetAudience;
+      if (data.audienceSegments !== undefined) patch.audience_segments = data.audienceSegments ?? [];
       if (data.positioning !== undefined) patch.positioning = data.positioning ?? null;
       if (data.mission !== undefined) patch.mission = data.mission ?? null;
       if (data.vision !== undefined) patch.vision = data.vision ?? null;

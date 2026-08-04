@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useBrands } from "@/context/BrandsContext";
 import { supabase } from "@/lib/supabase";
+import { getBrandKit, type BrandKit } from "@/lib/brandKit";
+import type { AudienceSegment } from "@/types/brand";
 
 const FORMATS = ["Single Post", "Carousel", "Reel", "Story"] as const;
 type Format = (typeof FORMATS)[number];
@@ -212,6 +214,8 @@ export default function ContentGenerator({
   const [format, setFormat] = useState<Format>("Single Post");
   const [tone, setTone] = useState<Tone>("Inspirational");
   const [captionMode, setCaptionMode] = useState<CaptionMode>("marketing");
+  const [segmentLabel, setSegmentLabel] = useState<string>(""); // "" = all segments
+  const [brandKit, setBrandKit] = useState<BrandKit | null>(null);
 
   // Generation
   const [loading, setLoading] = useState(false);
@@ -234,6 +238,15 @@ export default function ContentGenerator({
     if (!activeBrand) return;
     const saved = localStorage.getItem(`font-${activeBrand.id}`);
     if (saved) setFontFamily(saved);
+  }, [activeBrand]);
+
+  // Reset segment selection when the active brand changes, and load its Brand Kit
+  useEffect(() => {
+    setSegmentLabel("");
+    if (!activeBrand) { setBrandKit(null); return; }
+    let cancelled = false;
+    getBrandKit(activeBrand.id).then((kit) => { if (!cancelled) setBrandKit(kit); });
+    return () => { cancelled = true; };
   }, [activeBrand]);
 
   useEffect(() => {
@@ -320,12 +333,16 @@ export default function ContentGenerator({
         imageMimeType = meta.split(":")[1]?.split(";")[0];
       }
 
+      const selectedSegment: AudienceSegment | null =
+        activeBrand?.audienceSegments?.find((s) => s.label === segmentLabel) ?? null;
+
       const res = await fetch("/api/content/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           brandName: activeBrand?.name ?? "Unknown Brand",
           targetAudience: activeBrand?.targetAudience ?? "",
+          targetSegment: selectedSegment,
           contentIdea: topic,
           format,
           tone,
@@ -333,6 +350,15 @@ export default function ContentGenerator({
           brandVoice: activeBrand?.brandVoice ?? null,
           brandPositioning: activeBrand?.positioning ?? null,
           brandStrategy: activeBrand?.strategy ?? null,
+          brandKit: brandKit
+            ? {
+                primaryColour: brandKit.primaryColour,
+                secondaryColour: brandKit.secondaryColour,
+                accentColour: brandKit.accentColour,
+                headingFont: brandKit.headingFont,
+                bodyFont: brandKit.bodyFont,
+              }
+            : null,
           imageBase64,
           imageMimeType,
         }),
@@ -539,6 +565,24 @@ export default function ContentGenerator({
                 <span className="w-1.5 h-1.5 rounded-full bg-black" />
                 {activeBrand.name}
               </span>
+            </div>
+          )}
+
+          {!!activeBrand?.audienceSegments?.length && (
+            <div>
+              <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
+                Target Segment
+              </label>
+              <select
+                value={segmentLabel}
+                onChange={(e) => setSegmentLabel(e.target.value)}
+                className="w-full sm:w-auto border border-black/15 px-4 py-2.5 text-sm focus:outline-none focus:border-black/40 transition-colors rounded-none bg-white appearance-none"
+              >
+                <option value="">All segments</option>
+                {activeBrand.audienceSegments.map((s) => (
+                  <option key={s.label} value={s.label}>{s.label}</option>
+                ))}
+              </select>
             </div>
           )}
 

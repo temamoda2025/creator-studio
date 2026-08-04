@@ -15,6 +15,7 @@ import SocialConnections from "@/components/SocialConnections";
 import { useBrands } from "@/context/BrandsContext";
 import JourneyPlanner from "@/components/JourneyPlanner";
 import type { Brand } from "@/types/brand";
+import { getBrandKit } from "@/lib/brandKit";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -409,6 +410,7 @@ export default function DashboardPage() {
   // Ideas
   const [ideas,        setIdeas]        = useState<Idea[]>([]);
   const [ideasLoading, setIdeasLoading] = useState(false);
+  const [segmentLabel, setSegmentLabel] = useState<string>(""); // "" = all segments
   const ideasCacheRef = useRef<Map<string, Idea[]>>(new Map());
 
   // Topic search
@@ -442,81 +444,110 @@ export default function DashboardPage() {
     setCalendarData(loadCalendar(activeBrand.id));
   }, [activeBrand]);
 
-  // Clear topic search on brand switch
+  // Clear topic search and segment selection on brand switch
   useEffect(() => {
     setTopicIdeas([]);
     setCurrentTopic(null);
     setTopicInput("");
+    setSegmentLabel("");
   }, [activeBrand]);
 
-  // Fetch brand-specific content ideas (Claude Haiku, cached per brand)
-  const fetchIdeas = useCallback((brand: Brand) => {
-    const cached = ideasCacheRef.current.get(brand.id);
+  // Fetch brand-specific content ideas (Claude Haiku, cached per brand + segment)
+  const fetchIdeas = useCallback((brand: Brand, segment: string) => {
+    const cacheKey = `${brand.id}:${segment}`;
+    const cached = ideasCacheRef.current.get(cacheKey);
     if (cached) { setIdeas(cached); return; }
     setIdeasLoading(true);
     let cancelled = false;
-    fetch("/api/ideas/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        brandName: brand.name,
-        niche: brand.niche,
-        targetAudience: brand.targetAudience,
-        positioning: brand.positioning ?? null,
-        mission: brand.mission ?? null,
-        vision: brand.vision ?? null,
-        brandVoice: brand.brandVoice ?? null,
-        strategy: brand.strategy ?? null,
-      }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled) return;
-        if (Array.isArray(data)) {
-          ideasCacheRef.current.set(brand.id, data);
-          setIdeas(data);
-        } else {
-          setIdeas(getIdeasForBrand(brand));
-        }
+    const selectedSegment = brand.audienceSegments?.find((s) => s.label === segment) ?? null;
+    getBrandKit(brand.id).catch(() => null).then((kit) => {
+      if (cancelled) return;
+      fetch("/api/ideas/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brandName: brand.name,
+          niche: brand.niche,
+          targetAudience: brand.targetAudience,
+          targetSegment: selectedSegment,
+          positioning: brand.positioning ?? null,
+          mission: brand.mission ?? null,
+          vision: brand.vision ?? null,
+          brandVoice: brand.brandVoice ?? null,
+          strategy: brand.strategy ?? null,
+          brandKit: kit
+            ? {
+                primaryColour: kit.primaryColour,
+                secondaryColour: kit.secondaryColour,
+                accentColour: kit.accentColour,
+                headingFont: kit.headingFont,
+                bodyFont: kit.bodyFont,
+              }
+            : null,
+        }),
       })
-      .catch(() => { if (!cancelled) setIdeas(getIdeasForBrand(brand)); })
-      .finally(() => { if (!cancelled) setIdeasLoading(false); });
+        .then((r) => r.json())
+        .then((data) => {
+          if (cancelled) return;
+          if (Array.isArray(data)) {
+            ideasCacheRef.current.set(cacheKey, data);
+            setIdeas(data);
+          } else {
+            setIdeas(getIdeasForBrand(brand));
+          }
+        })
+        .catch(() => { if (!cancelled) setIdeas(getIdeasForBrand(brand)); })
+        .finally(() => { if (!cancelled) setIdeasLoading(false); });
+    });
     return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
     if (!activeBrand) { setIdeas([]); return; }
-    return fetchIdeas(activeBrand);
-  }, [activeBrand, fetchIdeas]);
+    return fetchIdeas(activeBrand, segmentLabel);
+  }, [activeBrand, segmentLabel, fetchIdeas]);
 
   const fetchTopicIdeas = useCallback((topic: string) => {
     if (!activeBrand || !topic.trim()) return;
     setTopicLoading(true);
-    fetch("/api/ideas/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        brandName: activeBrand.name,
-        niche: activeBrand.niche,
-        targetAudience: activeBrand.targetAudience,
-        positioning: activeBrand.positioning ?? null,
-        mission: activeBrand.mission ?? null,
-        vision: activeBrand.vision ?? null,
-        brandVoice: activeBrand.brandVoice ?? null,
-        strategy: activeBrand.strategy ?? null,
-        topic: topic.trim(),
-      }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setTopicIdeas(data);
-          setCurrentTopic(topic.trim());
-        }
+    const selectedSegment = activeBrand.audienceSegments?.find((s) => s.label === segmentLabel) ?? null;
+    getBrandKit(activeBrand.id).catch(() => null).then((kit) => {
+      fetch("/api/ideas/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brandName: activeBrand.name,
+          niche: activeBrand.niche,
+          targetAudience: activeBrand.targetAudience,
+          targetSegment: selectedSegment,
+          positioning: activeBrand.positioning ?? null,
+          mission: activeBrand.mission ?? null,
+          vision: activeBrand.vision ?? null,
+          brandVoice: activeBrand.brandVoice ?? null,
+          strategy: activeBrand.strategy ?? null,
+          brandKit: kit
+            ? {
+                primaryColour: kit.primaryColour,
+                secondaryColour: kit.secondaryColour,
+                accentColour: kit.accentColour,
+                headingFont: kit.headingFont,
+                bodyFont: kit.bodyFont,
+              }
+            : null,
+          topic: topic.trim(),
+        }),
       })
-      .catch(() => {})
-      .finally(() => setTopicLoading(false));
-  }, [activeBrand]);
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setTopicIdeas(data);
+            setCurrentTopic(topic.trim());
+          }
+        })
+        .catch(() => {})
+        .finally(() => setTopicLoading(false));
+    });
+  }, [activeBrand, segmentLabel]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -839,11 +870,23 @@ export default function DashboardPage() {
                         <p className="text-xs text-black/35 mt-0.5">{activeBrand.niche}</p>
                       </div>
                       <div className="flex items-center gap-3">
+                        {!!activeBrand.audienceSegments?.length && (
+                          <select
+                            value={segmentLabel}
+                            onChange={(e) => setSegmentLabel(e.target.value)}
+                            className="text-xs border border-black/15 px-3 py-1.5 focus:outline-none focus:border-black/40 transition-colors rounded-none bg-white appearance-none text-black/60"
+                          >
+                            <option value="">All segments</option>
+                            {activeBrand.audienceSegments.map((s) => (
+                              <option key={s.label} value={s.label}>{s.label}</option>
+                            ))}
+                          </select>
+                        )}
                         <button
                           onClick={() => {
                             if (!activeBrand || ideasLoading) return;
-                            ideasCacheRef.current.delete(activeBrand.id);
-                            fetchIdeas(activeBrand);
+                            ideasCacheRef.current.delete(`${activeBrand.id}:${segmentLabel}`);
+                            fetchIdeas(activeBrand, segmentLabel);
                           }}
                           disabled={ideasLoading}
                           className="text-xs text-black/25 hover:text-black transition-colors disabled:opacity-30"

@@ -23,6 +23,11 @@ interface BrandStrategyPayload {
   btsTopics?: string[];
 }
 
+interface AudienceSegmentPayload {
+  label: string;
+  description: string;
+}
+
 export interface JourneyIdea {
   title: string;
   format: "Reel" | "Carousel" | "Static Post" | "Story";
@@ -44,7 +49,11 @@ function buildPrompt(
   niche: string,
   targetAudience: string,
   strategy: BrandStrategyPayload,
+  targetSegment: AudienceSegmentPayload | null = null,
 ): string {
+  const resolvedAudience = targetSegment?.description
+    ? `${targetSegment.description}${targetSegment.label ? ` (segment: ${targetSegment.label})` : ""}`
+    : targetAudience || "their audience";
   const ctx: string[] = [];
   if (strategy.heroDescription)      ctx.push(`**Hero:** ${strategy.heroDescription}`);
   if (strategy.externalProblem)      ctx.push(`**External Problem:** ${strategy.externalProblem}`);
@@ -67,7 +76,7 @@ function buildPrompt(
   if (strategy.btsTopics?.length)
     ctx.push(`**BTS Topics (reference these specifically):** ${strategy.btsTopics.join(", ")}`);
 
-  return `Generate a 6-stage Brand Journey content plan for ${brandName} — a ${niche} brand targeting ${targetAudience || "their audience"}.
+  return `Generate a 6-stage Brand Journey content plan for ${brandName} — a ${niche} brand targeting ${resolvedAudience}.
 
 ## Brand Context
 ${ctx.join("\n")}
@@ -124,7 +133,7 @@ Return all 6 stages. Each stage has 4–5 ideas. No markdown. No code fences. Ju
 
 export async function POST(request: Request) {
   try {
-    const { brandName, niche, targetAudience, strategy } = await request.json();
+    const { brandName, niche, targetAudience, strategy, targetSegment } = await request.json();
 
     if (!brandName || !niche) {
       return Response.json({ error: "brandName and niche are required" }, { status: 400 });
@@ -144,7 +153,7 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "user",
-          content: buildPrompt(brandName, niche, targetAudience ?? "", strategy),
+          content: buildPrompt(brandName, niche, targetAudience ?? "", strategy, (targetSegment as AudienceSegmentPayload | null) ?? null),
         },
       ],
     });

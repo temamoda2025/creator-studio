@@ -176,6 +176,39 @@ interface BrandVoicePayload {
   captionExample?: string;
 }
 
+interface BrandKitPayload {
+  primaryColour?: string;
+  secondaryColour?: string;
+  accentColour?: string;
+  headingFont?: string;
+  bodyFont?: string;
+}
+
+interface AudienceSegmentPayload {
+  label: string;
+  description: string;
+}
+
+function buildVisualIdentityBlock(kit: BrandKitPayload | null | undefined): string {
+  if (!kit) return "";
+  const lines: string[] = [];
+  if (kit.primaryColour || kit.secondaryColour || kit.accentColour) {
+    lines.push(
+      `**Colours:** primary ${kit.primaryColour ?? "—"}, secondary ${kit.secondaryColour ?? "—"}, accent ${kit.accentColour ?? "—"}`
+    );
+  }
+  if (kit.headingFont || kit.bodyFont) {
+    lines.push(`**Fonts:** heading "${kit.headingFont ?? "—"}", body "${kit.bodyFont ?? "—"}"`);
+  }
+  if (lines.length === 0) return "";
+  return `\n## Visual Identity Notes\n${lines.join("\n")}\nReference this visual world where relevant — don't just list it back.\n`;
+}
+
+function segmentLine(targetSegment: AudienceSegmentPayload | null | undefined): string {
+  if (!targetSegment?.description) return "";
+  return `\n**Target this specific audience segment:** ${targetSegment.description}${targetSegment.label ? ` (segment: ${targetSegment.label})` : ""}\n`;
+}
+
 interface BrandStrategyPayload {
   heroDescription?: string;
   externalProblem?: string;
@@ -221,6 +254,8 @@ function buildBrandPrompt(
   vision: string | null,
   brandVoice: BrandVoicePayload | null,
   strategy: BrandStrategyPayload | null = null,
+  brandKit: BrandKitPayload | null = null,
+  targetSegment: AudienceSegmentPayload | null = null,
 ): string {
   // Resolve dominant side of each voice trait slider
   const traitsLine = brandVoice?.traits?.length
@@ -233,11 +268,15 @@ function buildBrandPrompt(
         .join(", ")
     : null;
 
+  const resolvedAudience = targetSegment?.description
+    ? `${targetSegment.description}${targetSegment.label ? ` (segment: ${targetSegment.label})` : ""}`
+    : targetAudience || null;
+
   const context = [
     mission     ? `**Mission:** ${mission}`         : null,
     vision      ? `**Vision:** ${vision}`            : null,
     positioning ? `**Positioning:** ${positioning}`  : null,
-    targetAudience ? `**Target Audience:** ${targetAudience}` : null,
+    resolvedAudience ? `**Target Audience:** ${resolvedAudience}` : null,
   ].filter(Boolean).join("\n");
 
   const voice = [
@@ -249,6 +288,7 @@ function buildBrandPrompt(
   ].filter(Boolean).join("\n");
 
   const strategyBlock = buildStrategyBlock(strategy);
+  const visualBlock = buildVisualIdentityBlock(brandKit);
   const pillarInstruction = strategy?.contentPillars?.length
     ? `\n**Pillar rule:** Use these exact content pillars as the primary source for ideas — do not invent new pillar names: ${strategy.contentPillars.join(", ")}. Distribute the 5 ideas across these pillars.`
     : "";
@@ -257,7 +297,7 @@ function buildBrandPrompt(
 
 ${context}
 ${voice ? `\n## Brand Voice\n${voice}` : ""}
-${strategyBlock}
+${strategyBlock}${visualBlock}
 ## Your Task
 
 Generate 5 content ideas that could ONLY have been written for ${brandName}. Not templates — the hooks must feel like they came from inside this brand, from someone who has lived in this world for years.${pillarInstruction}
@@ -301,12 +341,18 @@ const TOPIC_PROMPT = (
   brandName: string,
   brandVoice: BrandVoicePayload | null,
   strategy: BrandStrategyPayload | null = null,
+  brandKit: BrandKitPayload | null = null,
+  targetSegment: AudienceSegmentPayload | null = null,
 ) => {
   const traitsLine = brandVoice?.traits?.length
     ? brandVoice.traits
         .map(t => t.intensity >= 0.65 ? t.trait : t.intensity <= 0.35 ? t.opposite : `${t.trait}/${t.opposite}`)
         .join(", ")
     : null;
+
+  const resolvedAudience = targetSegment?.description
+    ? `${targetSegment.description}${targetSegment.label ? ` (segment: ${targetSegment.label})` : ""}`
+    : targetAudience || null;
 
   const voiceBlock = vanessa
     ? `Brand Voice: Vanessa Stoykov — bold, taboo-breaking finance educator. Brave, direct, confronting. Speaks to women in their 40s–60s navigating money and major life events.`
@@ -319,18 +365,20 @@ const TOPIC_PROMPT = (
     : [
         `Brand: ${brandName} (${niche}).`,
         positioning ? `Positioning: ${positioning}.` : null,
-        targetAudience ? `Target Audience: ${targetAudience}.` : null,
+        resolvedAudience ? `Target Audience: ${resolvedAudience}.` : null,
         brandVoice?.toneDescription ? `Tone: ${brandVoice.toneDescription}.` : null,
         traitsLine ? `Voice traits: ${traitsLine}.` : null,
         brandVoice?.captionExample ? `Voice example: "${brandVoice.captionExample}"` : null,
       ].filter(Boolean).join(" ");
 
   const strategyBlock = buildStrategyBlock(strategy);
+  const visualBlock = buildVisualIdentityBlock(brandKit);
+  const segmentNote = (vanessa || astra || natasha || temaModa) ? segmentLine(targetSegment) : "";
 
   return `Generate 5 high-quality, specific social media content ideas on the topic of "${topic}".
 
-${voiceBlock}
-${strategyBlock}
+${voiceBlock}${segmentNote}
+${strategyBlock}${visualBlock}
 Return ONLY a raw JSON array — no markdown, no code fences, no preamble. Each item must match this exact shape:
 [
   {
@@ -355,7 +403,7 @@ export async function POST(request: Request) {
   try {
     const {
       niche, targetAudience, positioning, brandName, topic,
-      mission, vision, brandVoice, strategy,
+      mission, vision, brandVoice, strategy, brandKit, targetSegment,
     } = await request.json();
 
     if (!niche) {
@@ -369,18 +417,22 @@ export async function POST(request: Request) {
 
     const strategyPayload: BrandStrategyPayload | null = strategy ?? null;
     const strategyAppendix = buildStrategyBlock(strategyPayload);
+    const brandKitPayload: BrandKitPayload | null = brandKit ?? null;
+    const segmentPayload: AudienceSegmentPayload | null = targetSegment ?? null;
+    const visualAppendix = buildVisualIdentityBlock(brandKitPayload);
+    const segmentAppendix = segmentLine(segmentPayload);
 
     const baseMessage = topic
-      ? TOPIC_PROMPT(topic, niche, targetAudience, positioning, vanessa, astra, natasha, temaModa, brandName ?? "", brandVoice ?? null, strategyPayload)
+      ? TOPIC_PROMPT(topic, niche, targetAudience, positioning, vanessa, astra, natasha, temaModa, brandName ?? "", brandVoice ?? null, strategyPayload, brandKitPayload, segmentPayload)
       : vanessa
-        ? VANESSA_PROMPT + (strategyAppendix ? `\n${strategyAppendix}` : "")
+        ? VANESSA_PROMPT + segmentAppendix + (strategyAppendix ? `\n${strategyAppendix}` : "") + visualAppendix
         : astra
-          ? ASTRA_PROMPT + (strategyAppendix ? `\n${strategyAppendix}` : "")
+          ? ASTRA_PROMPT + segmentAppendix + (strategyAppendix ? `\n${strategyAppendix}` : "") + visualAppendix
           : natasha
-            ? NATASHA_PROMPT + (strategyAppendix ? `\n${strategyAppendix}` : "")
+            ? NATASHA_PROMPT + segmentAppendix + (strategyAppendix ? `\n${strategyAppendix}` : "") + visualAppendix
             : temaModa
-              ? TEMA_MODA_PROMPT + (strategyAppendix ? `\n${strategyAppendix}` : "")
-              : buildBrandPrompt(brandName ?? "", niche, targetAudience, positioning ?? null, mission ?? null, vision ?? null, brandVoice ?? null, strategyPayload);
+              ? TEMA_MODA_PROMPT + segmentAppendix + (strategyAppendix ? `\n${strategyAppendix}` : "") + visualAppendix
+              : buildBrandPrompt(brandName ?? "", niche, targetAudience, positioning ?? null, mission ?? null, vision ?? null, brandVoice ?? null, strategyPayload, brandKitPayload, segmentPayload);
 
     const userMessage = `${baseMessage}\n\n[ts:${Date.now()}]`;
 

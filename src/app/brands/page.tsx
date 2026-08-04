@@ -52,6 +52,13 @@ interface StrategyFormState {
   btsTopics: string;        // newline-separated
 }
 
+interface AudienceSegmentForm {
+  label: string;
+  description: string;
+}
+
+const MAX_AUDIENCE_SEGMENTS = 3;
+
 interface FormState {
   name: string;
   handle: string;
@@ -59,6 +66,7 @@ interface FormState {
   customNiche: string;
   platforms: Platform[];
   targetAudience: string;
+  audienceSegments: AudienceSegmentForm[];
   positioning: string;
   toneDescription: string;
   captionExample: string;
@@ -91,6 +99,7 @@ const emptyForm: FormState = {
   customNiche: "",
   platforms: [],
   targetAudience: "",
+  audienceSegments: [],
   positioning: "",
   toneDescription: "",
   captionExample: "",
@@ -107,6 +116,7 @@ function brandToForm(b: Brand): FormState {
     customNiche: knownNiche ? "" : b.niche,
     platforms: b.platforms,
     targetAudience: b.targetAudience,
+    audienceSegments: (b.audienceSegments ?? []).map((s) => ({ label: s.label, description: s.description })),
     positioning: b.positioning ?? "",
     toneDescription: b.brandVoice.toneDescription ?? "",
     captionExample: b.brandVoice.captionExample ?? "",
@@ -151,6 +161,9 @@ function formToBrand(f: FormState): Omit<Brand, "id" | "createdAt" | "updatedAt"
     niche: f.niche === "Other" ? f.customNiche.trim() : f.niche,
     platforms: f.platforms,
     targetAudience: f.targetAudience.trim(),
+    audienceSegments: f.audienceSegments
+      .map((s) => ({ label: s.label.trim(), description: s.description.trim() }))
+      .filter((s) => s.label || s.description),
     positioning: f.positioning.trim() || undefined,
     brandVoice: {
       traits: [],
@@ -228,6 +241,20 @@ function BrandForm({
 
   const setStrategy = <K extends keyof StrategyFormState>(key: K, val: StrategyFormState[K]) =>
     setForm((prev) => ({ ...prev, strategy: { ...prev.strategy, [key]: val } }));
+
+  const addSegment = () => {
+    if (form.audienceSegments.length >= MAX_AUDIENCE_SEGMENTS) return;
+    set("audienceSegments", [...form.audienceSegments, { label: "", description: "" }]);
+  };
+
+  const removeSegment = (i: number) =>
+    set("audienceSegments", form.audienceSegments.filter((_, idx) => idx !== i));
+
+  const setSegment = (i: number, key: keyof AudienceSegmentForm, val: string) =>
+    set(
+      "audienceSegments",
+      form.audienceSegments.map((s, idx) => (idx === i ? { ...s, [key]: val } : s))
+    );
 
   const setStrategyStep = (index: 0 | 1 | 2, val: string) =>
     setForm((prev) => {
@@ -356,6 +383,58 @@ function BrandForm({
                 className={inputCls}
               />
             </Field>
+          </div>
+
+          {/* Audience Segments */}
+          <div className="mt-6 pt-6 border-t border-black/8">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-black/40">
+                Audience Segments <span className="text-black/25">— optional, up to {MAX_AUDIENCE_SEGMENTS}</span>
+              </p>
+              {form.audienceSegments.length < MAX_AUDIENCE_SEGMENTS && (
+                <button
+                  type="button"
+                  onClick={addSegment}
+                  className="text-xs text-black/50 hover:text-black transition-colors font-medium"
+                >
+                  + Add segment
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-black/25 mb-4">
+              Split this brand&apos;s audience into distinct segments (e.g. B2C consumers and B2B corporates) to target content at one specifically.
+            </p>
+            {form.audienceSegments.length === 0 ? (
+              <p className="text-xs text-black/25 italic">No segments — content generation uses the single Target Audience above.</p>
+            ) : (
+              <div className="space-y-3">
+                {form.audienceSegments.map((seg, i) => (
+                  <div key={i} className="grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-start border border-black/8 p-3">
+                    <input
+                      type="text"
+                      value={seg.label}
+                      onChange={(e) => setSegment(i, "label", e.target.value)}
+                      placeholder="Segment label — e.g. B2C Consumers"
+                      className={inputCls}
+                    />
+                    <input
+                      type="text"
+                      value={seg.description}
+                      onChange={(e) => setSegment(i, "description", e.target.value)}
+                      placeholder="e.g. Women 30–50 who value quality over quantity"
+                      className={inputCls}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeSegment(i)}
+                      className="text-xs text-black/30 hover:text-red-500 transition-colors px-2 py-2.5"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

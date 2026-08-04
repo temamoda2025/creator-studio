@@ -134,6 +134,21 @@ const DURATION_GUIDANCE: Record<string, string> = {
     "90 seconds total. Structure: hook (0:00–0:03), 4–5 scenes (0:03–1:22), CTA (1:22–1:30). This is the long-form Reel — use it for complex transformations, tutorials, or brand stories. Each scene 15–20 seconds. The viewer is fully opted in by scene 2; reward that with depth and detail. Build to a crescendo before the CTA.",
 };
 
+interface AudienceSegmentPayload {
+  label: string;
+  description: string;
+}
+
+function resolveTargetAudience(
+  targetAudience: string | undefined,
+  targetSegment: AudienceSegmentPayload | null | undefined
+): string {
+  if (targetSegment?.description) {
+    return `${targetSegment.description}${targetSegment.label ? ` (segment: ${targetSegment.label})` : ""}`;
+  }
+  return targetAudience || "Infer from brand context";
+}
+
 interface BrandStrategyPayload {
   heroDescription?: string;
   externalProblem?: string;
@@ -187,7 +202,7 @@ function buildStrategyBlock(s: BrandStrategyPayload | null | undefined, captionM
 
 export async function POST(request: Request) {
   try {
-    const { topic, brandName, targetAudience, duration, captionMode = "marketing", brandVoice, brandPositioning, brandStrategy } =
+    const { topic, brandName, targetAudience, targetSegment, duration, captionMode = "marketing", brandVoice, brandPositioning, brandStrategy } =
       await request.json();
 
     if (!topic || !brandName || !duration) {
@@ -212,6 +227,7 @@ export async function POST(request: Request) {
 
     const isStorytelling = captionMode === "storytelling";
     const strategySection = buildStrategyBlock(brandStrategy as BrandStrategyPayload | null, captionMode);
+    const resolvedAudience = resolveTargetAudience(targetAudience, targetSegment as AudienceSegmentPayload | null);
 
     const storyBrandDirective = !isStorytelling && strategySection
       ? `
@@ -230,7 +246,7 @@ Apply the Brand Strategy above as follows:
       ? `Write a ${duration} Storytelling Reel script for this brand and topic.
 
 **Brand:** ${brandName}
-${positioningLine}**Target Audience:** ${targetAudience || "Infer from brand context"}
+${positioningLine}**Target Audience:** ${resolvedAudience}
 **Topic:** ${topic}
 ${voiceSection}${strategySection}
 ## Duration & Structure
@@ -260,7 +276,7 @@ Return ONLY the raw JSON object. No markdown. No code fences. No preamble.`
       : `Write a ${duration} Instagram Reel script for this brand and topic.
 
 **Brand:** ${brandName}
-${positioningLine}**Target Audience:** ${targetAudience || "Infer from brand context"}
+${positioningLine}**Target Audience:** ${resolvedAudience}
 **Topic:** ${topic}
 ${voiceSection}${strategySection}${storyBrandDirective}
 ## Duration & Structure

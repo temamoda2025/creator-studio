@@ -1,5 +1,10 @@
 export type Platform = "instagram" | "tiktok" | "youtube" | "pinterest" | "facebook" | "linkedin";
 
+export interface AudienceSegment {
+  label: string;
+  description: string;
+}
+
 export interface BrandVoiceTrait {
   trait: string;
   opposite: string;
@@ -38,6 +43,7 @@ export interface Brand {
   niche: string;
   platforms: Platform[];
   targetAudience: string;
+  audienceSegments?: AudienceSegment[]; // up to 3 distinct segments (e.g. B2C + B2B)
   positioning?: string;
   mission?: string;
   vision?: string;

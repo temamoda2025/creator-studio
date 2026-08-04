@@ -155,6 +155,44 @@ You return structured JSON only. No markdown fences. No explanation. No preamble
 
 Note: "slides" is ONLY included when the format is Carousel. Omit the field entirely for all other formats.`;
 
+interface BrandKitPayload {
+  primaryColour?: string;
+  secondaryColour?: string;
+  accentColour?: string;
+  headingFont?: string;
+  bodyFont?: string;
+}
+
+interface AudienceSegmentPayload {
+  label: string;
+  description: string;
+}
+
+function buildVisualIdentityBlock(kit: BrandKitPayload | null | undefined): string {
+  if (!kit) return "";
+  const lines: string[] = [];
+  if (kit.primaryColour || kit.secondaryColour || kit.accentColour) {
+    lines.push(
+      `**Colours:** primary ${kit.primaryColour ?? "—"}, secondary ${kit.secondaryColour ?? "—"}, accent ${kit.accentColour ?? "—"}`
+    );
+  }
+  if (kit.headingFont || kit.bodyFont) {
+    lines.push(`**Fonts:** heading "${kit.headingFont ?? "—"}", body "${kit.bodyFont ?? "—"}"`);
+  }
+  if (lines.length === 0) return "";
+  return `\n## Visual Identity Notes\n${lines.join("\n")}\nReference this visual world where relevant (e.g. describing the mood of a colour, the feel of the typography) — don't just list it back.\n`;
+}
+
+function resolveTargetAudience(
+  targetAudience: string | undefined,
+  targetSegment: AudienceSegmentPayload | null | undefined
+): string {
+  if (targetSegment?.description) {
+    return `${targetSegment.description}${targetSegment.label ? ` (segment: ${targetSegment.label})` : ""}`;
+  }
+  return targetAudience || "Not specified — infer from brand context";
+}
+
 interface BrandStrategyPayload {
   heroDescription?: string;
   externalProblem?: string;
@@ -221,6 +259,8 @@ export async function POST(request: Request) {
       brandVoice,
       brandPositioning,
       brandStrategy,
+      brandKit,
+      targetSegment,
       imageBase64,
       imageMimeType,
     } = await request.json();
@@ -269,6 +309,8 @@ export async function POST(request: Request) {
 
     const isStorytelling = captionMode === "storytelling";
     const strategySection = buildStrategyBlock(brandStrategy as BrandStrategyPayload | null, captionMode);
+    const visualSection = buildVisualIdentityBlock(brandKit as BrandKitPayload | null);
+    const resolvedAudience = resolveTargetAudience(targetAudience, targetSegment as AudienceSegmentPayload | null);
 
     const hasImage = !!imageBase64;
 
@@ -276,10 +318,10 @@ export async function POST(request: Request) {
       ? `Write a Storytelling caption for this brand and idea.${hasImage ? " You have been provided with the actual image for this post — let it inform the scene you open with. What moment does this image contain? Write from inside that moment." : ""}
 
 **Brand:** ${brandName}
-${positioningLine}**Target Audience:** ${targetAudience || "Not specified — infer from brand context"}
+${positioningLine}**Target Audience:** ${resolvedAudience}
 **Content Idea / Topic:** ${contentIdea}
 **Format:** ${format} — ${selectedFormatGuidance}
-${voiceSection}${strategySection}
+${voiceSection}${strategySection}${visualSection}
 ## Your Task
 
 1. Build the Story Architecture — identify the opening scene, emotional thread, tension, universal truth, vulnerable detail, and quiet insight that this story holds.
@@ -304,10 +346,10 @@ Return ONLY the raw JSON object. No markdown. No code fences. No preamble.`
       : `Generate ADORAR™ content for this brand and idea.${hasImage ? " You have been provided with the actual image for this post — study it carefully. The caption must feel like it was written specifically for this exact visual. Reference what you see: the mood, the composition, the colours, the story the image tells. The visual and caption must feel inseparable." : ""}
 
 **Brand:** ${brandName}
-${positioningLine}**Target Audience:** ${targetAudience || "Not specified — infer from brand context"}
+${positioningLine}**Target Audience:** ${resolvedAudience}
 **Content Idea / Topic:** ${contentIdea}
 **Format:** ${format} — ${selectedFormatGuidance}
-${selectedToneGuidance}${voiceSection}${strategySection}
+${selectedToneGuidance}${voiceSection}${strategySection}${visualSection}
 ## Your Task
 
 1. Run a full ADORAR™ analysis on this content idea — go deep on each layer. This is the strategic foundation that everything else is built on.${hasImage ? " Let the image inform every layer of the analysis." : ""}

@@ -200,6 +200,7 @@ function buildFullScript(script: ReelScript): string {
 export default function ReelScriptGenerator() {
   const { brands, activeBrand, setActiveBrandId } = useBrands();
   const [selectedBrandId, setSelectedBrandId] = useState<string>("");
+  const [segmentLabel, setSegmentLabel] = useState<string>(""); // "" = all segments
   const [topic, setTopic] = useState("");
   const [duration, setDuration] = useState<Duration>("30s");
   const [captionMode, setCaptionMode] = useState<CaptionMode>("marketing");
@@ -215,6 +216,9 @@ export default function ReelScriptGenerator() {
 
   const selectedBrand = brands.find((b) => b.id === selectedBrandId) ?? null;
 
+  // Reset segment when the selected brand changes
+  useEffect(() => { setSegmentLabel(""); }, [selectedBrandId]);
+
   const generate = async () => {
     if (!topic.trim() || !selectedBrandId) return;
 
@@ -223,6 +227,8 @@ export default function ReelScriptGenerator() {
     setError(null);
 
     try {
+      const selectedSegment = selectedBrand?.audienceSegments?.find((s) => s.label === segmentLabel) ?? null;
+
       const res = await fetch("/api/reel-script/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -232,6 +238,7 @@ export default function ReelScriptGenerator() {
           captionMode,
           brandName: selectedBrand?.name ?? "",
           targetAudience: selectedBrand?.targetAudience ?? "",
+          targetSegment: selectedSegment,
           brandVoice: selectedBrand?.brandVoice ?? null,
           brandPositioning: selectedBrand?.positioning ?? null,
           brandStrategy: selectedBrand?.strategy ?? null,
@@ -312,6 +319,25 @@ export default function ReelScriptGenerator() {
                 </select>
               )}
             </div>
+
+            {/* Segment selector */}
+            {!!selectedBrand?.audienceSegments?.length && (
+              <div>
+                <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">
+                  Target Segment
+                </label>
+                <select
+                  value={segmentLabel}
+                  onChange={(e) => setSegmentLabel(e.target.value)}
+                  className="w-full border border-black/15 px-4 py-3 text-sm focus:outline-none focus:border-black/40 transition-colors rounded-none bg-white appearance-none"
+                >
+                  <option value="">All segments</option>
+                  {selectedBrand.audienceSegments.map((s) => (
+                    <option key={s.label} value={s.label}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Topic */}
             <div>

@@ -240,6 +240,7 @@ export default function JourneyPlanner() {
   const [stages, setStages] = useState<JourneyStage[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [segmentLabel, setSegmentLabel] = useState<string>(""); // "" = all segments
 
   const hasStrategy = !!(
     activeBrand?.strategy?.heroDescription ||
@@ -253,6 +254,7 @@ export default function JourneyPlanner() {
     setLoading(true);
     setError(null);
     try {
+      const selectedSegment = activeBrand.audienceSegments?.find((s) => s.label === segmentLabel) ?? null;
       const res = await fetch("/api/journey/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -260,6 +262,7 @@ export default function JourneyPlanner() {
           brandName: activeBrand.name,
           niche: activeBrand.niche,
           targetAudience: activeBrand.targetAudience,
+          targetSegment: selectedSegment,
           strategy: activeBrand.strategy ?? {},
         }),
       });
@@ -271,7 +274,7 @@ export default function JourneyPlanner() {
     } finally {
       setLoading(false);
     }
-  }, [activeBrand]);
+  }, [activeBrand, segmentLabel]);
 
   // No brand selected
   if (!activeBrand) {
@@ -316,6 +319,18 @@ export default function JourneyPlanner() {
           </div>
 
           <div className="flex items-center gap-3">
+            {!!activeBrand.audienceSegments?.length && (
+              <select
+                value={segmentLabel}
+                onChange={(e) => setSegmentLabel(e.target.value)}
+                className="text-xs border border-black/15 px-3 py-2 focus:outline-none focus:border-black/40 transition-colors rounded-none bg-white appearance-none text-black/60"
+              >
+                <option value="">All segments</option>
+                {activeBrand.audienceSegments.map((s) => (
+                  <option key={s.label} value={s.label}>{s.label}</option>
+                ))}
+              </select>
+            )}
             {stages && (
               <button
                 onClick={generate}
