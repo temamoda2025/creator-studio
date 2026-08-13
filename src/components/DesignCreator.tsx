@@ -4,6 +4,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useBrands } from "@/context/BrandsContext";
 import { getBrandKit, saveBrandKit } from "@/lib/brandKit";
 import {
+  listCustomTemplates,
+  saveCustomTemplate,
+  deleteCustomTemplate,
+  type CustomTemplate,
+} from "@/lib/customTemplates";
+import {
   FONT_CATEGORIES,
   GOOGLE_FONTS_HREF,
   DEFAULT_FONT,
@@ -46,15 +52,43 @@ const BG_PRESETS = [
 // ─── Templates ────────────────────────────────────────────────────────────────
 
 const TEMPLATES = [
-  { id: "bold-headline", label: "Bold Headline",  desc: "Large bold text, centered" },
-  { id: "minimal-quote", label: "Minimal Quote",  desc: "Thin weight, quote marks"  },
-  { id: "split-layout",  label: "Split Layout",   desc: "Brand top, caption below"  },
-  { id: "full-bleed",    label: "Full Bleed",     desc: "Gradient overlay at bottom" },
-  { id: "text-only",     label: "Text Only",      desc: "Clean headline, no brand"  },
-  { id: "branded-frame", label: "Branded Frame",  desc: "Corner frame with brand"   },
+  { id: "bold-headline",  label: "Bold Headline",  desc: "Large bold text, centered" },
+  { id: "minimal-quote",  label: "Minimal Quote",  desc: "Thin weight, quote marks"  },
+  { id: "split-layout",   label: "Split Layout",   desc: "Brand top, caption below"  },
+  { id: "full-bleed",     label: "Full Bleed",     desc: "Gradient overlay at bottom" },
+  { id: "text-only",      label: "Text Only",      desc: "Clean headline, no brand"  },
+  { id: "branded-frame",  label: "Branded Frame",  desc: "Corner frame with brand"   },
+  { id: "magazine-cover", label: "Magazine Cover", desc: "Big headline, tagline, brand corner" },
+  { id: "quote-card",     label: "Quote Card",     desc: "Centered quote, accent line" },
+  { id: "list-post",      label: "List Post",      desc: "Numbered list overlay"     },
+  { id: "before-after",   label: "Before / After", desc: "Split screen with divider" },
+  { id: "testimonial",    label: "Testimonial",    desc: "Quote with attribution"    },
+  { id: "statement",      label: "Statement",      desc: "Full colour, bold statement" },
 ] as const;
 
 type TemplateId = (typeof TEMPLATES)[number]["id"];
+
+// ─── Text style ───────────────────────────────────────────────────────────────
+
+interface TextStyle {
+  fontSize: number;                            // 24–200 px
+  align: "left" | "center" | "right";
+  vpos: "top" | "middle" | "bottom";
+  lineHeight: number;                           // 1.0–2.0
+  bold: boolean;
+  italic: boolean;
+  letterSpacing: number;                        // -2–20 px
+}
+
+const DEFAULT_TEXT_STYLE: TextStyle = {
+  fontSize: 64,
+  align: "center",
+  vpos: "middle",
+  lineHeight: 1.3,
+  bold: true,
+  italic: false,
+  letterSpacing: 0,
+};
 
 // ─── Canvas helpers ───────────────────────────────────────────────────────────
 
@@ -65,9 +99,10 @@ function setFont(
   ctx: CanvasRenderingContext2D,
   size: number,
   weight: 300 | 400 | 500 | 600 | 700,
-  spacing = "0px"
+  spacing = "0px",
+  italic = false
 ) {
-  ctx.font = `${weight} ${size}px ${_fontStack}`;
+  ctx.font = `${italic ? "italic " : ""}${weight} ${size}px ${_fontStack}`;
   try {
     (ctx as unknown as Record<string, unknown>).letterSpacing = spacing;
   } catch { /* browser may not support */ }
@@ -90,26 +125,6 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number): st
     if (cur) lines.push(cur);
   }
   return lines;
-}
-
-function fitText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxW: number,
-  maxH: number,
-  maxSize: number,
-  minSize: number,
-  weight: 300 | 400 | 500 | 600 | 700,
-  spacing: string,
-  lhRatio: number
-): { fontSize: number; lines: string[] } {
-  for (let s = maxSize; s >= minSize; s -= 4) {
-    setFont(ctx, s, weight, spacing);
-    const lines = wrapText(ctx, text, maxW);
-    if (lines.length * s * lhRatio <= maxH) return { fontSize: s, lines };
-  }
-  setFont(ctx, minSize, weight, spacing);
-  return { fontSize: minSize, lines: wrapText(ctx, text, maxW) };
 }
 
 function hex2rgba(hex: string, a: number): string {
@@ -144,7 +159,7 @@ function drawLines(
   x: number,
   startY: number,
   lh: number,
-  align: "left" | "center",
+  align: "left" | "center" | "right",
   textColor: string,
   textBg: TextBgOpts,
   fontSize: number,
@@ -156,7 +171,7 @@ function drawLines(
       const padH = Math.max(8, fontSize * 0.25);
       const padV = Math.max(4, fontSize * 0.15);
       const radius = Math.max(4, fontSize * 0.2);
-      const rx = align === "center" ? x - tw / 2 - padH : x - padH;
+      const rx = align === "center" ? x - tw / 2 - padH : align === "right" ? x - tw - padH : x - padH;
       const ry = y - padV;
       // Save & clear shadow so it doesn't apply to the background rect
       const sv = { sc: ctx.shadowColor, sb: ctx.shadowBlur, sx: ctx.shadowOffsetX, sy: ctx.shadowOffsetY };
@@ -171,25 +186,51 @@ function drawLines(
   });
 }
 
+interface TextBox { x: number; y: number; w: number; h: number }
+
+// Lays out `text` inside `box` honouring the shared TextStyle controls
+// (font size, alignment, vertical position, line height, weight, italic, letter spacing).
+function drawStyledText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  box: TextBox,
+  style: TextStyle,
+  textColor: string,
+  textBg: TextBgOpts,
+): { startY: number; usedH: number; lh: number } {
+  const weight: 300 | 400 | 500 | 600 | 700 = style.bold ? 700 : 400;
+  setFont(ctx, style.fontSize, weight, `${style.letterSpacing}px`, style.italic);
+  const lines = wrapText(ctx, text, box.w);
+  const lh = style.fontSize * style.lineHeight;
+  const usedH = lines.length * lh;
+  const startY =
+    style.vpos === "top" ? box.y :
+    style.vpos === "bottom" ? box.y + box.h - usedH :
+    box.y + (box.h - usedH) / 2;
+  const x =
+    style.align === "left" ? box.x :
+    style.align === "right" ? box.x + box.w :
+    box.x + box.w / 2;
+  ctx.textAlign = style.align;
+  ctx.textBaseline = "top";
+  drawLines(ctx, lines, x, startY, lh, style.align, textColor, textBg, style.fontSize);
+  return { startY, usedH, lh };
+}
+
 // ─── Template draw functions ──────────────────────────────────────────────────
 
 function drawBoldHeadline(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, caption: string, textBg: TextBgOpts
+  textColor: string, caption: string, textBg: TextBgOpts, style: TextStyle
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.08);
-  const { fontSize, lines } = fitText(ctx, caption, W - PAD * 2, H - PAD * 2, 120, 28, 700, "-2px", 1.2);
-  setFont(ctx, fontSize, 700, "-2px");
-  const lh = fontSize * 1.2;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  const startY = (H - lines.length * lh) / 2;
-  drawLines(ctx, lines, W / 2, startY, lh, "center", textColor, textBg, fontSize);
+  const box: TextBox = { x: PAD, y: PAD, w: W - PAD * 2, h: H - PAD * 2 };
+  drawStyledText(ctx, caption, box, style, textColor, textBg);
 }
 
 function drawMinimalQuote(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, caption: string, textBg: TextBgOpts
+  textColor: string, caption: string, textBg: TextBgOpts, style: TextStyle
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.1);
   const quoteSize = Math.round(W * 0.18);
@@ -197,19 +238,15 @@ function drawMinimalQuote(
   ctx.fillStyle = hex2rgba(textColor, 0.1);
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.fillText("\u201C", PAD * 0.5, -PAD * 0.25);
+  ctx.fillText("“", PAD * 0.5, -PAD * 0.25);
 
-  const { fontSize, lines } = fitText(ctx, caption, W - PAD * 2.5, H - PAD * 2.5, 68, 20, 300, "0.5px", 1.6);
-  setFont(ctx, fontSize, 300, "0.5px");
-  const lh = fontSize * 1.6;
-  const startY = (H - lines.length * lh) / 2;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  drawLines(ctx, lines, PAD * 1.5, startY, lh, "left", textColor, textBg, fontSize);
+  const box: TextBox = { x: PAD * 1.5, y: PAD * 1.3, w: W - PAD * 2.5, h: H - PAD * 2.3 };
+  drawStyledText(ctx, caption, box, style, textColor, textBg);
 }
+
 function drawSplitLayout(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, caption: string, textBg: TextBgOpts
+  textColor: string, caption: string, textBg: TextBgOpts, style: TextStyle
 ) {
   const isLandscape = W > H;
   const PAD = Math.round(Math.min(W, H) * 0.07);
@@ -220,35 +257,22 @@ function drawSplitLayout(
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(splitX, PAD); ctx.lineTo(splitX, H - PAD); ctx.stroke();
 
-    const cX = splitX + PAD;
-    const { fontSize, lines } = fitText(ctx, caption, W - splitX - PAD * 1.5, H - PAD * 2, 64, 18, 500, "-0.5px", 1.3);
-    setFont(ctx, fontSize, 500, "-0.5px");
-    const lh = fontSize * 1.3;
-    const startY = (H - lines.length * lh) / 2;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    drawLines(ctx, lines, cX, startY, lh, "left", textColor, textBg, fontSize);
+    const box: TextBox = { x: splitX + PAD, y: PAD, w: W - splitX - PAD * 2, h: H - PAD * 2 };
+    drawStyledText(ctx, caption, box, style, textColor, textBg);
   } else {
     const splitY = Math.round(H * 0.12);
     ctx.strokeStyle = hex2rgba(textColor, 0.2);
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(PAD, splitY); ctx.lineTo(W - PAD, splitY); ctx.stroke();
 
-    const cY = splitY + PAD;
-    const cH = H - splitY - PAD * 1.5;
-    const { fontSize, lines } = fitText(ctx, caption, W - PAD * 2, cH, 72, 20, 500, "-0.5px", 1.3);
-    setFont(ctx, fontSize, 500, "-0.5px");
-    const lh = fontSize * 1.3;
-    const startY = cY + (cH - lines.length * lh) / 2;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    drawLines(ctx, lines, PAD, startY, lh, "left", textColor, textBg, fontSize);
+    const box: TextBox = { x: PAD, y: splitY + PAD, w: W - PAD * 2, h: H - splitY - PAD * 2 };
+    drawStyledText(ctx, caption, box, style, textColor, textBg);
   }
 }
 
 function drawFullBleed(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, caption: string, textBg: TextBgOpts
+  textColor: string, caption: string, textBg: TextBgOpts, style: TextStyle
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.07);
   const bandH = Math.round(H * 0.55);
@@ -258,32 +282,22 @@ function drawFullBleed(
   ctx.fillStyle = grad;
   ctx.fillRect(0, H - bandH * 1.6, W, bandH * 1.6);
 
-  const { fontSize, lines } = fitText(ctx, caption, W - PAD * 2, bandH * 0.85, 80, 20, 600, "-0.5px", 1.25);
-  setFont(ctx, fontSize, 600, "-0.5px");
-  const lh = fontSize * 1.25;
-  const startY = H - PAD - lines.length * lh;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  drawLines(ctx, lines, PAD, startY, lh, "left", textColor, textBg, fontSize);
+  const box: TextBox = { x: PAD, y: H - bandH, w: W - PAD * 2, h: bandH - PAD };
+  drawStyledText(ctx, caption, box, style, textColor, textBg);
 }
 
 function drawTextOnly(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, caption: string, textBg: TextBgOpts
+  textColor: string, caption: string, textBg: TextBgOpts, style: TextStyle
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.1);
-  const { fontSize, lines } = fitText(ctx, caption, W - PAD * 2, H - PAD * 2, 100, 20, 500, "-0.5px", 1.3);
-  setFont(ctx, fontSize, 500, "-0.5px");
-  const lh = fontSize * 1.3;
-  const startY = (H - lines.length * lh) / 2;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  drawLines(ctx, lines, W / 2, startY, lh, "center", textColor, textBg, fontSize);
+  const box: TextBox = { x: PAD, y: PAD, w: W - PAD * 2, h: H - PAD * 2 };
+  drawStyledText(ctx, caption, box, style, textColor, textBg);
 }
 
 function drawBrandedFrame(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  textColor: string, caption: string, textBg: TextBgOpts
+  textColor: string, caption: string, textBg: TextBgOpts, style: TextStyle
 ) {
   const PAD = Math.round(Math.min(W, H) * 0.07);
   const inner = Math.round(PAD * 0.65);
@@ -303,13 +317,179 @@ function drawBrandedFrame(
   const inY = PAD + inner;
   const inW = W - (PAD + inner) * 2;
   const inH = H - inY * 2;
-  const { fontSize, lines } = fitText(ctx, caption, inW, inH, 80, 20, 500, "-0.5px", 1.3);
-  setFont(ctx, fontSize, 500, "-0.5px");
-  const lh = fontSize * 1.3;
-  const startY = inY + (inH - lines.length * lh) / 2;
+  const box: TextBox = { x: inX, y: inY, w: inW, h: inH };
+  drawStyledText(ctx, caption, box, style, textColor, textBg);
+}
+
+function drawMagazineCover(
+  ctx: CanvasRenderingContext2D, W: number, H: number,
+  textColor: string, caption: string, textBg: TextBgOpts, style: TextStyle, handle: string
+) {
+  const PAD = Math.round(Math.min(W, H) * 0.08);
+
+  // Brand corner tag
+  const tagSize = Math.max(11, Math.round(W * 0.02));
+  setFont(ctx, tagSize, 700, "2px");
+  ctx.fillStyle = hex2rgba(textColor, 0.5);
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  drawLines(ctx, lines, inX, startY, lh, "left", textColor, textBg, fontSize);
+  ctx.fillText(handle.toUpperCase(), PAD, PAD * 0.55);
+  ctx.strokeStyle = hex2rgba(textColor, 0.25);
+  ctx.lineWidth = 1;
+  const ruleY = PAD * 0.55 + tagSize * 1.6;
+  ctx.beginPath(); ctx.moveTo(PAD, ruleY); ctx.lineTo(W - PAD, ruleY); ctx.stroke();
+
+  const [headlineRaw, ...restLines] = caption.split("\n");
+  const headline = headlineRaw?.trim() || caption;
+  const tagline = restLines.join(" ").trim();
+
+  const boxTop = ruleY + PAD * 0.6;
+  const box: TextBox = { x: PAD, y: boxTop, w: W - PAD * 2, h: H - boxTop - PAD * (tagline ? 1.8 : 1) };
+  const { startY, usedH } = drawStyledText(ctx, headline, box, style, textColor, textBg);
+
+  if (tagline) {
+    const tagFontSize = Math.max(14, Math.round(style.fontSize * 0.32));
+    setFont(ctx, tagFontSize, 400, "1px");
+    ctx.fillStyle = hex2rgba(textColor, 0.6);
+    ctx.textAlign = style.align;
+    ctx.textBaseline = "top";
+    const tx = style.align === "left" ? box.x : style.align === "right" ? box.x + box.w : box.x + box.w / 2;
+    ctx.fillText(tagline, tx, startY + usedH + PAD * 0.3);
+  }
+}
+
+function drawQuoteCard(
+  ctx: CanvasRenderingContext2D, W: number, H: number,
+  textColor: string, caption: string, textBg: TextBgOpts, style: TextStyle
+) {
+  const PAD = Math.round(Math.min(W, H) * 0.12);
+
+  const accentW = Math.round(W * 0.1);
+  ctx.strokeStyle = textColor;
+  ctx.lineWidth = Math.max(3, Math.round(H * 0.006));
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - accentW / 2, PAD * 0.7);
+  ctx.lineTo(W / 2 + accentW / 2, PAD * 0.7);
+  ctx.stroke();
+
+  setFont(ctx, Math.round(W * 0.13), 700, "0px");
+  ctx.fillStyle = hex2rgba(textColor, 0.14);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText("“", W / 2, PAD * 0.9);
+
+  const box: TextBox = { x: PAD, y: PAD * 1.7, w: W - PAD * 2, h: H - PAD * 2.7 };
+  // A quote card reads as a centered quote by design — align is intentionally locked.
+  drawStyledText(ctx, caption, box, { ...style, align: "center" }, textColor, textBg);
+}
+
+function drawListPost(
+  ctx: CanvasRenderingContext2D, W: number, H: number,
+  textColor: string, caption: string, textBg: TextBgOpts, style: TextStyle
+) {
+  const PAD = Math.round(Math.min(W, H) * 0.08);
+  const items = caption.split("\n").map(s => s.trim()).filter(Boolean);
+  if (items.length === 0) return;
+
+  const weight: 300 | 400 | 500 | 600 | 700 = style.bold ? 700 : 400;
+  setFont(ctx, style.fontSize, weight, `${style.letterSpacing}px`, style.italic);
+  const lh = style.fontSize * style.lineHeight;
+  const numGutter = style.fontSize * 1.3;
+  const box: TextBox = { x: PAD, y: PAD, w: W - PAD * 2, h: H - PAD * 2 };
+
+  const rows: { text: string; num: number | null }[] = [];
+  items.forEach((item, idx) => {
+    const wrapped = wrapText(ctx, item, box.w - numGutter);
+    wrapped.forEach((line, li) => rows.push({ text: line, num: li === 0 ? idx + 1 : null }));
+  });
+
+  const maxLineW = rows.reduce((m, r) => Math.max(m, ctx.measureText(r.text).width + numGutter), 0);
+  const usedH = rows.length * lh;
+  const startY =
+    style.vpos === "top" ? box.y :
+    style.vpos === "bottom" ? box.y + box.h - usedH :
+    box.y + (box.h - usedH) / 2;
+  const blockX =
+    style.align === "left" ? box.x :
+    style.align === "right" ? box.x + box.w - maxLineW :
+    box.x + (box.w - maxLineW) / 2;
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  rows.forEach((row, i) => {
+    const y = startY + i * lh;
+    if (textBg.enabled && row.text.trim()) {
+      const tw = ctx.measureText(row.text).width;
+      const padH = Math.max(8, style.fontSize * 0.25);
+      const padV = Math.max(4, style.fontSize * 0.15);
+      const radius = Math.max(4, style.fontSize * 0.2);
+      ctx.fillStyle = hex2rgba(textBg.color, textBg.opacity / 100);
+      roundRect(ctx, blockX + numGutter - padH, y - padV, tw + padH * 2, style.fontSize + padV * 2, radius);
+      ctx.fill();
+    }
+    if (row.num !== null) {
+      ctx.fillStyle = hex2rgba(textColor, 0.4);
+      ctx.fillText(`${row.num}.`, blockX, y);
+    }
+    ctx.fillStyle = textColor;
+    ctx.fillText(row.text, blockX + numGutter, y);
+  });
+}
+
+function drawBeforeAfter(
+  ctx: CanvasRenderingContext2D, W: number, H: number,
+  textColor: string, caption: string, textBg: TextBgOpts, style: TextStyle
+) {
+  const isLandscape = W >= H;
+  const [beforeRaw, afterRaw] = caption.split("\n");
+  const before = beforeRaw?.trim() || "BEFORE";
+  const after = afterRaw?.trim() || "AFTER";
+  const PAD = Math.round(Math.min(W, H) * 0.08);
+
+  ctx.strokeStyle = hex2rgba(textColor, 0.3);
+  ctx.lineWidth = 2;
+
+  if (isLandscape) {
+    ctx.beginPath(); ctx.moveTo(W / 2, PAD); ctx.lineTo(W / 2, H - PAD); ctx.stroke();
+    const boxL: TextBox = { x: PAD, y: PAD, w: W / 2 - PAD * 1.5, h: H - PAD * 2 };
+    const boxR: TextBox = { x: W / 2 + PAD * 0.5, y: PAD, w: W / 2 - PAD * 1.5, h: H - PAD * 2 };
+    drawStyledText(ctx, before, boxL, style, textColor, textBg);
+    drawStyledText(ctx, after, boxR, style, textColor, textBg);
+  } else {
+    ctx.beginPath(); ctx.moveTo(PAD, H / 2); ctx.lineTo(W - PAD, H / 2); ctx.stroke();
+    const boxT: TextBox = { x: PAD, y: PAD, w: W - PAD * 2, h: H / 2 - PAD * 1.5 };
+    const boxB: TextBox = { x: PAD, y: H / 2 + PAD * 0.5, w: W - PAD * 2, h: H / 2 - PAD * 1.5 };
+    drawStyledText(ctx, before, boxT, style, textColor, textBg);
+    drawStyledText(ctx, after, boxB, style, textColor, textBg);
+  }
+}
+
+function drawTestimonial(
+  ctx: CanvasRenderingContext2D, W: number, H: number,
+  textColor: string, caption: string, textBg: TextBgOpts, style: TextStyle, brandName: string
+) {
+  const PAD = Math.round(Math.min(W, H) * 0.1);
+  const box: TextBox = { x: PAD, y: PAD, w: W - PAD * 2, h: H - PAD * 2.8 };
+  const { startY, usedH } = drawStyledText(ctx, caption, box, style, textColor, textBg);
+
+  const attrSize = Math.max(14, Math.round(style.fontSize * 0.36));
+  setFont(ctx, attrSize, 600, "0.5px", style.italic);
+  ctx.fillStyle = hex2rgba(textColor, 0.65);
+  ctx.textAlign = style.align;
+  ctx.textBaseline = "top";
+  const ax = style.align === "left" ? box.x : style.align === "right" ? box.x + box.w : box.x + box.w / 2;
+  const ay = Math.min(startY + usedH + PAD * 0.4, H - PAD - attrSize);
+  ctx.fillText(`— ${brandName}`, ax, ay);
+}
+
+function drawStatement(
+  ctx: CanvasRenderingContext2D, W: number, H: number,
+  textColor: string, caption: string, textBg: TextBgOpts, style: TextStyle
+) {
+  const PAD = Math.round(Math.min(W, H) * 0.1);
+  const box: TextBox = { x: PAD, y: PAD, w: W - PAD * 2, h: H - PAD * 2 };
+  // A single statement reads as a centered poster line by design — align is intentionally locked.
+  drawStyledText(ctx, caption, box, { ...style, align: "center" }, textColor, textBg);
 }
 
 // ─── Main draw orchestrator ───────────────────────────────────────────────────
@@ -324,6 +504,9 @@ interface DrawOptions {
   shadowColor: string;
   shadowEnabled: boolean;
   textBg: TextBgOpts;
+  textStyle: TextStyle;
+  brandName: string;
+  handle: string;
 }
 
 function draw(
@@ -334,7 +517,7 @@ function draw(
   opts: DrawOptions
 ) {
   const { template, bgImage, overlayOpacity, logo, logoPosition,
-          fontFamily, shadowColor, shadowEnabled, textBg } = opts;
+          fontFamily, shadowColor, shadowEnabled, textBg, textStyle, brandName, handle } = opts;
   const PAD = Math.round(Math.min(W, H) * 0.07);
 
   _fontStack = `"${fontFamily}", ${FALLBACK}`;
@@ -364,12 +547,18 @@ function draw(
   }
 
   switch (template) {
-    case "bold-headline":  drawBoldHeadline(ctx, W, H, textColor, caption, textBg); break;
-    case "minimal-quote":  drawMinimalQuote(ctx, W, H, textColor, caption, textBg); break;
-    case "split-layout":   drawSplitLayout(ctx, W, H, textColor, caption, textBg); break;
-    case "full-bleed":     drawFullBleed(ctx, W, H, textColor, caption, textBg); break;
-    case "text-only":      drawTextOnly(ctx, W, H, textColor, caption, textBg); break;
-    case "branded-frame":  drawBrandedFrame(ctx, W, H, textColor, caption, textBg); break;
+    case "bold-headline":  drawBoldHeadline(ctx, W, H, textColor, caption, textBg, textStyle); break;
+    case "minimal-quote":  drawMinimalQuote(ctx, W, H, textColor, caption, textBg, textStyle); break;
+    case "split-layout":   drawSplitLayout(ctx, W, H, textColor, caption, textBg, textStyle); break;
+    case "full-bleed":     drawFullBleed(ctx, W, H, textColor, caption, textBg, textStyle); break;
+    case "text-only":      drawTextOnly(ctx, W, H, textColor, caption, textBg, textStyle); break;
+    case "branded-frame":  drawBrandedFrame(ctx, W, H, textColor, caption, textBg, textStyle); break;
+    case "magazine-cover": drawMagazineCover(ctx, W, H, textColor, caption, textBg, textStyle, handle); break;
+    case "quote-card":     drawQuoteCard(ctx, W, H, textColor, caption, textBg, textStyle); break;
+    case "list-post":      drawListPost(ctx, W, H, textColor, caption, textBg, textStyle); break;
+    case "before-after":   drawBeforeAfter(ctx, W, H, textColor, caption, textBg, textStyle); break;
+    case "testimonial":    drawTestimonial(ctx, W, H, textColor, caption, textBg, textStyle, brandName); break;
+    case "statement":      drawStatement(ctx, W, H, textColor, caption, textBg, textStyle); break;
   }
 
   // Always reset shadow so it doesn't bleed into logo / next draw
@@ -392,12 +581,34 @@ function draw(
   } catch { /* ignore */ }
 }
 
+// ─── Alignment icon ───────────────────────────────────────────────────────────
+
+function AlignIcon({ align }: { align: "left" | "center" | "right" }) {
+  const widths = [14, 9, 16];
+  const ys = [2, 6, 10];
+  const xs = widths.map((w) =>
+    align === "left" ? 1 : align === "right" ? 17 - w : (18 - w) / 2
+  );
+  return (
+    <svg width="18" height="12" viewBox="0 0 18 12" fill="none" aria-hidden="true">
+      {widths.map((w, i) => (
+        <line
+          key={i}
+          x1={xs[i]} y1={ys[i]} x2={xs[i] + w} y2={ys[i]}
+          stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
+        />
+      ))}
+    </svg>
+  );
+}
+
 // ─── Template thumbnail sub-component ────────────────────────────────────────
 
 const THUMB_PX = 180;
+const THUMB_REF = 1080; // reference canvas width used to scale absolute px values for thumbnails
 
 function TemplateThumbnail({
-  id, label, desc, isSelected, onClick, bgColor, textColor, fontFamily, fontsReady,
+  id, label, desc, isSelected, onClick, bgColor, textColor, fontFamily, fontsReady, textStyle, brandName, handle,
 }: {
   id: TemplateId;
   label: string;
@@ -408,6 +619,9 @@ function TemplateThumbnail({
   textColor: string;
   fontFamily: string;
   fontsReady: boolean;
+  textStyle: TextStyle;
+  brandName: string;
+  handle: string;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -419,16 +633,19 @@ function TemplateThumbnail({
       if (!ctx) return;
       canvas.width = THUMB_PX;
       canvas.height = THUMB_PX;
+      const scale = THUMB_PX / THUMB_REF;
+      const thumbStyle: TextStyle = { ...textStyle, fontSize: Math.max(8, Math.round(textStyle.fontSize * scale)) };
       draw(ctx, THUMB_PX, THUMB_PX, bgColor, textColor,
         "Preview headline text for layout", {
           template: id, bgImage: null, overlayOpacity: 0,
           logo: null, logoPosition: "top-right", fontFamily,
           shadowColor: "#000000", shadowEnabled: false,
           textBg: { enabled: false, color: "#ffffff", opacity: 80 },
+          textStyle: thumbStyle, brandName, handle,
         });
     };
     document.fonts.load(`500 1em "${fontFamily}"`).then(doRender, doRender);
-  }, [id, bgColor, textColor, fontFamily, fontsReady]);
+  }, [id, bgColor, textColor, fontFamily, fontsReady, textStyle, brandName, handle]);
 
   return (
     <button
@@ -445,6 +662,85 @@ function TemplateThumbnail({
         <p className="text-[10px] text-black/35 mt-0.5 leading-tight">{desc}</p>
       </div>
     </button>
+  );
+}
+
+// ─── Custom (saved) template thumbnail ────────────────────────────────────────
+
+interface CustomTemplateConfig {
+  templateId?: TemplateId;
+  bgColor?: string;
+  textColor?: string;
+  shadowColor?: string;
+  shadowEnabled?: boolean;
+  textBgEnabled?: boolean;
+  textBgColor?: string;
+  textBgOpacity?: number;
+  fontFamily?: string;
+  logoPosition?: "top-left" | "top-right";
+  textStyle?: Partial<TextStyle>;
+  [key: string]: unknown;
+}
+
+function CustomTemplateThumbnail({
+  template, onClick, onDelete, fontsReady,
+}: {
+  template: CustomTemplate;
+  onClick: () => void;
+  onDelete: () => void;
+  fontsReady: boolean;
+}) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const cfg = template.config as CustomTemplateConfig;
+  const cfgTemplateId = cfg.templateId ?? "bold-headline";
+  const cfgBgColor = cfg.bgColor ?? BG_PRESETS[0].hex;
+  const cfgTextColor = cfg.textColor ?? "#ffffff";
+  const cfgFontFamily = cfg.fontFamily ?? DEFAULT_FONT;
+  const cfgTextStyle: TextStyle = { ...DEFAULT_TEXT_STYLE, ...cfg.textStyle };
+
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const doRender = () => {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      canvas.width = THUMB_PX;
+      canvas.height = THUMB_PX;
+      const scale = THUMB_PX / THUMB_REF;
+      const thumbStyle: TextStyle = { ...cfgTextStyle, fontSize: Math.max(8, Math.round(cfgTextStyle.fontSize * scale)) };
+      draw(ctx, THUMB_PX, THUMB_PX, cfgBgColor, cfgTextColor,
+        "Preview headline text for layout", {
+          template: cfgTemplateId, bgImage: null, overlayOpacity: 0,
+          logo: null, logoPosition: "top-right", fontFamily: cfgFontFamily,
+          shadowColor: "#000000", shadowEnabled: false,
+          textBg: { enabled: false, color: "#ffffff", opacity: 80 },
+          textStyle: thumbStyle, brandName: "Your Brand", handle: "@brand",
+        });
+    };
+    document.fonts.load(`500 1em "${cfgFontFamily}"`).then(doRender, doRender);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template, fontsReady]);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={onClick}
+        className="flex flex-col text-left border border-black/15 hover:border-black/40 transition-all overflow-hidden w-full"
+      >
+        <canvas ref={ref} style={{ width: 90, height: 90, display: "block" }} />
+        <div className="px-2 py-2">
+          <p className="text-[11px] font-semibold leading-tight text-black/70 truncate">{template.name}</p>
+        </div>
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        aria-label="Delete template"
+        title="Delete template"
+        className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center rounded-full bg-white/90 border border-black/10 text-black/40 hover:text-black/80 text-xs leading-none"
+      >
+        ×
+      </button>
+    </div>
   );
 }
 
@@ -511,6 +807,7 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   const [templateId,     setTemplateId]     = useState<TemplateId>("bold-headline");
   const [fontFamily,     setFontFamily]     = useState<string>(DEFAULT_FONT);
   const [fontsReady,     setFontsReady]     = useState(false);
+  const [textStyle,      setTextStyle]      = useState<TextStyle>(DEFAULT_TEXT_STYLE);
 
   // Logo
   const [logoImg,        setLogoImg]        = useState<HTMLImageElement | null>(null);
@@ -539,6 +836,13 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
   // Brand Kit notice
   const [kitNotice,      setKitNotice]      = useState(false);
   const kitNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Custom (personal) templates
+  const [customTemplates,   setCustomTemplates]   = useState<CustomTemplate[]>([]);
+  const [showSaveTemplate,  setShowSaveTemplate]  = useState(false);
+  const [newTemplateName,   setNewTemplateName]   = useState("");
+  const [savingTemplate,    setSavingTemplate]    = useState(false);
+  const [saveTemplateError, setSaveTemplateError] = useState<string | null>(null);
 
   // ── Derived ─────────────────────────────────────────────────────────────────
   const isCarousel   = formatId === "ig-carousel";
@@ -598,6 +902,7 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
       setLogoImg(null);
       setLogoDataUrl(null);
       setKitNotice(false);
+      setCustomTemplates([]);
       return;
     }
     getBrandKit(activeBrand.id).then((kit) => {
@@ -620,6 +925,7 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
       setKitNotice(true);
       kitNoticeTimerRef.current = setTimeout(() => setKitNotice(false), 3000);
     });
+    listCustomTemplates(activeBrand.id).then(setCustomTemplates);
   }, [activeBrand]);
 
   // ── Seed from Content Generator ──────────────────────────────────────────────
@@ -657,6 +963,8 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
       saveBrandKit(activeBrand.id, next);
     }
   };
+
+  const updateTextStyle = (patch: Partial<TextStyle>) => setTextStyle((prev) => ({ ...prev, ...patch }));
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -746,14 +1054,56 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
     setSlides(prev => prev.map((s, idx) => idx === i ? { ...s, color } : s));
   };
 
+  // Custom template management
+  const handleSaveTemplate = async () => {
+    if (!activeBrand || !newTemplateName.trim() || savingTemplate) return;
+    setSavingTemplate(true);
+    setSaveTemplateError(null);
+    const config: CustomTemplateConfig = {
+      templateId, bgColor, textColor, shadowColor, shadowEnabled,
+      textBgEnabled, textBgColor, textBgOpacity, fontFamily, logoPosition, textStyle,
+    };
+    const saved = await saveCustomTemplate(activeBrand.id, newTemplateName.trim(), config);
+    if (saved) {
+      setCustomTemplates((prev) => [saved, ...prev]);
+      setShowSaveTemplate(false);
+      setNewTemplateName("");
+    } else {
+      setSaveTemplateError("Couldn't save — try again.");
+    }
+    setSavingTemplate(false);
+  };
+
+  const applyCustomTemplate = (t: CustomTemplate) => {
+    const c = t.config as CustomTemplateConfig;
+    if (c.templateId) setTemplateId(c.templateId);
+    if (c.bgColor) setBgColor(c.bgColor);
+    if (c.textColor) setTextColor(c.textColor);
+    if (c.shadowColor) setShadowColor(c.shadowColor);
+    if (typeof c.shadowEnabled === "boolean") setShadowEnabled(c.shadowEnabled);
+    if (typeof c.textBgEnabled === "boolean") setTextBgEnabled(c.textBgEnabled);
+    if (c.textBgColor) setTextBgColor(c.textBgColor);
+    if (typeof c.textBgOpacity === "number") setTextBgOpacity(c.textBgOpacity);
+    if (c.fontFamily) setFontFamily(c.fontFamily);
+    if (c.logoPosition) setLogoPosition(c.logoPosition);
+    if (c.textStyle) setTextStyle((prev) => ({ ...prev, ...c.textStyle }));
+  };
+
+  const handleDeleteCustomTemplate = async (id: string) => {
+    setCustomTemplates((prev) => prev.filter((t) => t.id !== id));
+    await deleteCustomTemplate(id);
+  };
+
   // ── Canvas rendering ─────────────────────────────────────────────────────────
   const drawOpts = useCallback((): DrawOptions => ({
     template: templateId, bgImage: bgImg, overlayOpacity,
     logo: logoImg, logoPosition, fontFamily,
     shadowColor, shadowEnabled,
     textBg: { enabled: textBgEnabled, color: textBgColor, opacity: textBgOpacity },
+    textStyle, brandName, handle,
   }), [templateId, bgImg, overlayOpacity, logoImg, logoPosition, fontFamily,
-       shadowColor, shadowEnabled, textBgEnabled, textBgColor, textBgOpacity]);
+       shadowColor, shadowEnabled, textBgEnabled, textBgColor, textBgOpacity,
+       textStyle, brandName, handle]);
 
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -1095,7 +1445,65 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
 
       {/* ── Template gallery ── */}
       <div className="bg-white border border-black/10 p-6">
-        <p className="text-xs text-black/40 uppercase tracking-wider mb-4">Templates</p>
+        {activeBrand && customTemplates.length > 0 && (
+          <div className="mb-6 pb-6 border-b border-black/8">
+            <p className="text-xs text-black/40 uppercase tracking-wider mb-4">My Templates</p>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+              {customTemplates.map((t) => (
+                <CustomTemplateThumbnail
+                  key={t.id}
+                  template={t}
+                  onClick={() => applyCustomTemplate(t)}
+                  onDelete={() => handleDeleteCustomTemplate(t.id)}
+                  fontsReady={fontsReady}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+          <p className="text-xs text-black/40 uppercase tracking-wider">Templates</p>
+          {activeBrand && (
+            showSaveTemplate ? (
+              <div className="flex items-center gap-2">
+                <input
+                  value={newTemplateName}
+                  onChange={(e) => setNewTemplateName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveTemplate();
+                    if (e.key === "Escape") { setShowSaveTemplate(false); setNewTemplateName(""); }
+                  }}
+                  placeholder="Template name…"
+                  autoFocus
+                  className="border border-black/15 px-3 py-1.5 text-xs placeholder:text-black/25 focus:outline-none focus:border-black/40 rounded-none bg-white"
+                />
+                <button
+                  onClick={handleSaveTemplate}
+                  disabled={!newTemplateName.trim() || savingTemplate}
+                  className="text-xs bg-black text-white px-3 py-1.5 rounded-full hover:bg-black/80 transition-colors disabled:opacity-40"
+                >
+                  {savingTemplate ? "Saving…" : "Save"}
+                </button>
+                <button
+                  onClick={() => { setShowSaveTemplate(false); setNewTemplateName(""); setSaveTemplateError(null); }}
+                  className="text-xs text-black/35 hover:text-black/70 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowSaveTemplate(true)}
+                className="text-xs border border-black/15 px-3 py-1.5 rounded-full hover:border-black/40 transition-colors text-black/60"
+              >
+                Save as My Template ★
+              </button>
+            )
+          )}
+        </div>
+        {saveTemplateError && <p className="text-[11px] text-red-500 mb-3">{saveTemplateError}</p>}
+
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
           {TEMPLATES.map((t) => (
             <TemplateThumbnail
@@ -1109,6 +1517,9 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
               textColor={textColor}
               fontFamily={fontFamily}
               fontsReady={fontsReady}
+              textStyle={textStyle}
+              brandName={brandName}
+              handle={handle}
             />
           ))}
         </div>
@@ -1229,6 +1640,130 @@ export default function DesignCreator({ seed }: { seed?: DesignSeed | null }) {
               </div>
             </div>
           )}
+
+          {/* ── Text style controls ── */}
+          <div className="bg-white border border-black/10 p-6">
+            <p className="text-xs text-black/40 uppercase tracking-wider mb-4">Text Style</p>
+            <div className="space-y-5">
+
+              {/* Font size */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs text-black/40 uppercase tracking-wider">Font Size</label>
+                  <span className="text-[11px] text-black/35 tabular-nums">{textStyle.fontSize}px</span>
+                </div>
+                <input
+                  type="range" min={24} max={200} step={1}
+                  value={textStyle.fontSize}
+                  onChange={(e) => updateTextStyle({ fontSize: Number(e.target.value) })}
+                  className="w-full accent-black cursor-pointer"
+                />
+              </div>
+
+              {/* Alignment / Vertical position / Bold-Italic */}
+              <div className="flex flex-wrap gap-6">
+                <div>
+                  <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">Alignment</label>
+                  <div className="flex gap-1.5">
+                    {(["left", "center", "right"] as const).map((a) => (
+                      <button
+                        key={a}
+                        onClick={() => updateTextStyle({ align: a })}
+                        aria-label={`Align ${a}`}
+                        aria-pressed={textStyle.align === a}
+                        className={`w-9 h-9 flex items-center justify-center border rounded-full transition-colors ${
+                          textStyle.align === a
+                            ? "border-black bg-black text-white"
+                            : "border-black/20 text-black/50 hover:border-black/40"
+                        }`}
+                      >
+                        <AlignIcon align={a} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">Vertical Position</label>
+                  <div className="flex gap-1.5">
+                    {(["top", "middle", "bottom"] as const).map((pos) => (
+                      <button
+                        key={pos}
+                        onClick={() => updateTextStyle({ vpos: pos })}
+                        aria-pressed={textStyle.vpos === pos}
+                        className={`text-xs px-3 py-1.5 rounded-full border transition-colors capitalize ${
+                          textStyle.vpos === pos
+                            ? "border-black bg-black text-white"
+                            : "border-black/20 text-black/50 hover:border-black/40"
+                        }`}
+                      >
+                        {pos}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-black/40 uppercase tracking-wider mb-2">Style</label>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => updateTextStyle({ bold: !textStyle.bold })}
+                      aria-label="Toggle bold"
+                      aria-pressed={textStyle.bold}
+                      className={`w-9 h-9 flex items-center justify-center border rounded-full font-bold text-sm transition-colors ${
+                        textStyle.bold
+                          ? "border-black bg-black text-white"
+                          : "border-black/20 text-black/50 hover:border-black/40"
+                      }`}
+                    >
+                      B
+                    </button>
+                    <button
+                      onClick={() => updateTextStyle({ italic: !textStyle.italic })}
+                      aria-label="Toggle italic"
+                      aria-pressed={textStyle.italic}
+                      className={`w-9 h-9 flex items-center justify-center border rounded-full italic text-sm transition-colors ${
+                        textStyle.italic
+                          ? "border-black bg-black text-white"
+                          : "border-black/20 text-black/50 hover:border-black/40"
+                      }`}
+                    >
+                      I
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Line height */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs text-black/40 uppercase tracking-wider">Line Height</label>
+                  <span className="text-[11px] text-black/35 tabular-nums">{textStyle.lineHeight.toFixed(1)}</span>
+                </div>
+                <input
+                  type="range" min={1.0} max={2.0} step={0.1}
+                  value={textStyle.lineHeight}
+                  onChange={(e) => updateTextStyle({ lineHeight: Number(e.target.value) })}
+                  className="w-full accent-black cursor-pointer"
+                />
+              </div>
+
+              {/* Letter spacing */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs text-black/40 uppercase tracking-wider">Letter Spacing</label>
+                  <span className="text-[11px] text-black/35 tabular-nums">{textStyle.letterSpacing}px</span>
+                </div>
+                <input
+                  type="range" min={-2} max={20} step={1}
+                  value={textStyle.letterSpacing}
+                  onChange={(e) => updateTextStyle({ letterSpacing: Number(e.target.value) })}
+                  className="w-full accent-black cursor-pointer"
+                />
+              </div>
+
+            </div>
+          </div>
 
           {!activeBrand && (
             <div className="bg-zinc-50 border border-black/10 p-4">
